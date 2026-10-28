@@ -1,0 +1,19 @@
+{
+  "name": "configurable-websocket-engine",
+  "version": "1.0.0",
+  "description": "Configurable WebSocket transport engine for Node.js applications",
+  "main": "engine/index.js",
+  "exports": {
+    ".": "./engine/index.js"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
