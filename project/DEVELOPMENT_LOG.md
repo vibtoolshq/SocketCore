@@ -1,3 +1,11 @@
+## 2026-10-28 - Phase 3: Reusable Extension Boundaries - Complete
+
+- Confirmed the transport core does not import/register sample business handlers; the standalone `app.js` composes them.
+- Added a public-API integration test for two independent app configurations with distinct auth headers, origins, identities, handlers, and metrics callbacks.
+- Documented public callback contracts and explicitly deferred store/pubsub/codec adapters because no consuming-app need is specified.
+- Verification: `npm test` passed 12 tests, 0 failures; exact phase scope/results are recorded in the phase completion log.
+- No transport behavior, protocol, dependency, UI, or application business feature was changed.
+
 # Development Log
 
 ## 2026-10-28 - Add tracked project records and user guides
@@ -29,4 +37,11 @@
 - Corrected command broadcast response to use the manager's successful-send count.
 - Added config/authorization/broadcast regression tests; final `npm test` passed 4 tests with no failures.
 - Updated `project/PROJECT_OVERVIEW.md` and the configuration, API, and protocol user guides. No unrelated feature/UI behavior was changed; no UI exists in this project.
-- Phase 2 remains pending and requires separate user approval.
+
+## 2026-10-28 - Phase 2: Runtime Safety and Observability - Complete
+
+- Baseline: local commit `81c3d7467c7ed980ac073d4a6612ea255ea232f1`; no remote/push.
+- Added callback deadlines, bounded drain, optional aggregate message/buffer limits, safe metrics hooks, sanitized error logging, and send-failure accounting.
+- `npm test` passed 11 tests, 0 failures.
+- Updated configuration/API/protocol/user guides and project feature inventory. No unrelated UI/business feature changes were made.
+- Per-IP/tenant protection remains deferred pending trusted-source assumptions; aggregate limits are optional and disabled by default; no supported concurrency claim is made.

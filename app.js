@@ -4,7 +4,9 @@ const {
   DEFAULT_HEARTBEAT,
   DEFAULT_LIMITS,
   DEFAULT_PORT,
+  DEFAULT_TIMEOUTS,
 } = require("./engine/config");
+const { safeLog } = require("./engine/observability");
 const { createStatusHandler } = require("./handlers/status.handler");
 const { createCommandHandler } = require("./handlers/command.handler");
 
@@ -94,6 +96,14 @@ const engine = createEngine({
       "WS_MAX_GROUP_NAME_LENGTH",
       DEFAULT_LIMITS.maxGroupNameLength,
     ),
+    maxGlobalMessagesPerSecond: readNumber(
+      "WS_MAX_GLOBAL_MESSAGES_PER_SECOND",
+      DEFAULT_LIMITS.maxGlobalMessagesPerSecond,
+    ),
+    maxTotalBufferedBytes: readNumber(
+      "WS_MAX_TOTAL_BUFFERED_BYTES",
+      DEFAULT_LIMITS.maxTotalBufferedBytes,
+    ),
   },
   heartbeat: {
     heartbeatIntervalMs: HEARTBEAT_MS,
@@ -102,6 +112,21 @@ const engine = createEngine({
       DEFAULT_HEARTBEAT.staleThresholdMs,
       0,
     ),
+  },
+  timeouts: {
+    originCheckMs: readNumber(
+      "WS_ORIGIN_CHECK_TIMEOUT_MS",
+      DEFAULT_TIMEOUTS.originCheckMs,
+    ),
+    authenticateMs: readNumber(
+      "WS_AUTH_TIMEOUT_MS",
+      DEFAULT_TIMEOUTS.authenticateMs,
+    ),
+    shutdownDrainMs: readNumber(
+      "WS_SHUTDOWN_DRAIN_TIMEOUT_MS",
+      DEFAULT_TIMEOUTS.shutdownDrainMs,
+    ),
+    metricsIntervalMs: DEFAULT_TIMEOUTS.metricsIntervalMs,
   },
   websocket: {
     perMessageDeflate: process.env.WS_PER_MESSAGE_DEFLATE === "true",
@@ -126,13 +151,25 @@ server.listen(PORT, () => {
 });
 
 let shuttingDown = false;
+let shutdownPromise = null;
 function shutdown() {
-  if (shuttingDown) return;
-  shuttingDown = true;
+  if (shutdownPromise) return shutdownPromise;
   console.log("\n[app] shutting down...");
-  engine.stop();
-  server.close(() => process.exit(0));
+  shutdownPromise = (async () => {
+    try {
+      await engine.stop();
+      if (server.listening) {
+        await new Promise((resolve, reject) => {
+          server.close((error) => (error ? reject(error) : resolve()));
+        });
+      }
+    } catch (error) {
+      safeLog(console, "error", "[app] shutdown failed", error);
+      process.exitCode = 1;
+    }
+  })();
+  return shutdownPromise;
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => void shutdown());
+process.on("SIGTERM", () => void shutdown());

@@ -1,3 +1,5 @@
+const { safeLog } = require("../engine/observability");
+
 function createCommandHandler({ connectionManager, logger = console } = {}) {
   const ALLOWED = new Set(["ping", "echo", "broadcast", "shutdown-client"]);
   const ADMIN_ONLY = new Set(["broadcast", "shutdown-client"]);
@@ -63,7 +65,7 @@ function createCommandHandler({ connectionManager, logger = console } = {}) {
         try {
           target.ws.close(1000, "shutdown by admin");
         } catch (e) {
-          logger.warn("close failed", e);
+          safeLog(logger, "warn", "close failed", e);
         }
         return ctx.reply({
           type: "command",

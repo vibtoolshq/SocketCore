@@ -2,49 +2,39 @@
 
 ## Verified Snapshot
 
-This document describes the inspected project and the Phase 1 implementation completed on 2026-10-28. The package is `configurable-websocket-engine` version `1.0.0`, CommonJS, Node.js `>=20`, with `ws` `^8.18.3`. Package entry/export resolve to `engine/index.js`; the standalone app is `app.js`.
+This document describes the inspected project after Phase 3 on 2026-10-28. The package is `configurable-websocket-engine` version `1.0.0`, CommonJS, Node.js `>=20`, with `ws` `^8.18.3`. Package root export is `createEngine`; the standalone app is `app.js`.
 
-This is a WebSocket transport engine and sample server, not a web page or REST API. The app creates a plain Node HTTP server and attaches the WebSocket upgrade listener. No app-specific HTTP route, frontend page, or upgrade path check exists.
+This is a WebSocket transport engine and sample server, not a web page or REST API. No app-specific HTTP route, frontend page, or upgrade path check exists.
 
-## Source Inventory and Ownership
+## Source Inventory
 
-| Path                           | Responsibility                                                                                                                                      |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app.js`                       | Reads environment settings using shared defaults; configures token/origin policy and sample handlers; starts HTTP/engine; handles SIGINT/SIGTERM.   |
-| `engine/config.js`             | Owns finite port, resource-limit, and heartbeat defaults; resolves/validates limit and heartbeat options.                                           |
-| `engine/index.js`              | Exports `createEngine`; validates engine inputs; handles upgrades, authentication/origin checks, client message limits, registration and lifecycle. |
-| `engine/connection-manager.js` | In-memory clients/groups; send/broadcast/subscription APIs; backpressure and heartbeat cleanup.                                                     |
-| `engine/message-router.js`     | JSON decoding, type dispatch, fixed protocol error responses.                                                                                       |
-| `handlers/status.handler.js`   | Sample status acknowledgement, admin snapshot, admin broadcast.                                                                                     |
-| `handlers/command.handler.js`  | Sample ping, echo, admin broadcast and admin client shutdown.                                                                                       |
-| `test/engine.test.js`          | Integration coverage for handshake, auth, group isolation, command role checks, limits, publish and cleanup.                                        |
-| `test/phase1.test.js`          | Phase 1 tests for config validation, default-deny manager subscribe, and command broadcast count.                                                   |
-| `package.json`                 | Package metadata, exports, scripts, Node floor, dependency.                                                                                         |
+| Path                           | Responsibility                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `app.js`                       | Environment configuration, sample auth/origin/handlers, server lifecycle and signal shutdown.              |
+| `engine/config.js`             | Shared port/limit/heartbeat/timeout defaults and option validation.                                        |
+| `engine/observability.js`      | Internal metrics wrapper and safe logger helpers.                                                          |
+| `engine/index.js`              | Public `createEngine` factory, bounded handshake callbacks, upgrade/message admission, metrics, lifecycle. |
+| `engine/connection-manager.js` | In-memory clients/groups, sends, authorization, aggregate/per-client buffering, heartbeat and drain.       |
+| `engine/message-router.js`     | JSON decoding, type dispatch, protocol errors, handler failure metric/log.                                 |
+| `handlers/command.handler.js`  | Sample ping/echo/admin broadcast/client shutdown commands.                                                 |
+| `handlers/status.handler.js`   | Sample status acknowledgement, admin snapshot and broadcast.                                               |
+| `test/engine.test.js`          | Integration coverage for handshake, auth, groups, limits and cleanup.                                      |
+| `test/phase1.test.js`          | Phase 1 config, subscription-authorization, and broadcast regression tests.                                |
+| `test/phase2.test.js`          | Phase 2 timeout, drain, aggregate cap, send failure, metrics, and redaction tests.                         |
+| `test/phase3.test.js`          | Proves two application configurations compose through public engine APIs without core specialization.      |
+| `package.json`                 | Package metadata, exports, scripts, Node floor, dependency.                                                |
 
-## Phase 1 Changes
+## Implemented Phase 1-3 Behavior
 
-- `engine/config.js` is the single source for the default port, engine limits, and heartbeat settings. The app, engine and manager use these shared defaults; direct manager defaults are finite.
-- Limit/heartbeat resolvers reject invalid object shapes, unknown keys, and invalid values. Explicit `Infinity` remains accepted for supported engine limit overrides.
-- Subscription authorization now applies through both handler context and direct connection-manager calls. Default behavior remains deny. Direct `connectionManager.subscribe` is asynchronous and returns `Promise<boolean>`.
-- Command broadcast's `delivered` response now uses the connection manager's successful-send count. It means accepted socket sends, not client-side processing acknowledgement.
-- `npm test` passed 4 tests, 0 failures after Phase 1.
+- Phase 1 centralized finite defaults and validation, enforced subscription authorization through both context and manager APIs, and fixed broadcast delivery count.
+- Phase 2 added bounded origin/auth callbacks, pending-slot release on timeout, graceful async drain, optional global limits, injectable metrics, safe logging, and send-failure cleanup.
+- Phase 3 verified that independent applications can configure auth headers, origins, identities, handlers and metrics through the same public `createEngine`/`register` APIs. Sample handlers remain outside transport core; `app.js` composes them.
+- `npm test` passed 12 tests, 0 failures after Phase 3.
 
-## Connection and Access Behavior
+## Extension Boundaries and Remaining Work
 
-The standalone app requires `AUTH_TOKENS`; `ADMIN_TOKENS` must be a subset. It reads `x-auth-token`; clients receive role `client`, admin tokens receive role `admin`. Requests without `Origin` are allowed. A provided Origin must exactly match `ALLOWED_ORIGINS`, unless wildcard is configured.
+The public root package export is `createEngine`; config/observability modules are internal. Supported extension callbacks include authentication, subscription authorization, logger and metrics. No external consumer requirements were supplied, so Phase 3 adds no store/pubsub/codec adapter or backend.
 
-`createEngine` requires an async-capable authenticate callback returning a non-null, non-array object identity. The engine can attach to an external HTTP server in `noServer` mode. It assigns UUID client IDs and sends a `connected` message. Rate/concurrency limits apply per client. Heartbeat starts when `engine.start()` is called.
+Per-IP/tenant limits remain deferred until a trusted proxy and tenant-identity contract are specified. The repository has no metrics backend, persistent store, load/soak tool, or production-qualified concurrency number. Optional aggregate limits being disabled by default is not capacity evidence. No UI exists.
 
-Subscriptions are denied by default. Applications must configure `authorizeSubscription`; they must also register a handler if clients need a join/subscribe message. Both context and direct manager subscribe calls call the authorizer.
-
-## Built-in Sample Handlers
-
-- `status` normally acknowledges and echoes data; admin can request a connection snapshot or broadcast status to other clients.
-- `command` supports `ping`, `echo`, admin `broadcast`, and admin `shutdown-client`.
-- Existing message types, JSON field shapes, and error codes are preserved by Phase 1. See `../docs/WEBSOCKET_PROTOCOL.md`.
-
-## Resource Controls and Boundaries
-
-Shared defaults/environment mapping are in `../docs/CONFIGURATION.md`. The implementation has total connection, pending-upgrade, payload, per-client rate/concurrency, per-socket buffered-byte, per-client subscription, and group-name limits. It does not have global/IP/tenant budgets, aggregate memory accounting, distributed state, persistent storage, TLS setup in the standalone app, load-qualified concurrency, or a frontend.
-
-Phase 1 does not implement callback deadlines, shutdown drain, metrics, adapters or scale qualification. See `../notes/PRODUCTION_READINESS_ROADMAP.md` for the private phase plan and `../notes/PHASE_COMPLETION_LOG.md` for actual completion records.
+User setup/protocol/API details are in `../docs/`; private phase scope and readiness decisions are in `../notes/PRODUCTION_READINESS_ROADMAP.md`.

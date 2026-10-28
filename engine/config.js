@@ -7,6 +7,8 @@ const DEFAULT_LIMITS = Object.freeze({
   maxBufferedBytes: 1024 * 1024,
   maxSubscriptionsPerClient: 100,
   maxGroupNameLength: 128,
+  maxGlobalMessagesPerSecond: Infinity,
+  maxTotalBufferedBytes: Infinity,
 });
 
 const DEFAULT_HEARTBEAT = Object.freeze({
@@ -15,6 +17,12 @@ const DEFAULT_HEARTBEAT = Object.freeze({
 });
 
 const DEFAULT_PORT = 8080;
+const DEFAULT_TIMEOUTS = Object.freeze({
+  originCheckMs: 5000,
+  authenticateMs: 5000,
+  shutdownDrainMs: 10000,
+  metricsIntervalMs: 10000,
+});
 
 function resolveOptions(name, defaults, overrides, isValid, expected) {
   if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
@@ -56,10 +64,22 @@ function resolveHeartbeat(overrides = {}) {
   );
 }
 
+function resolveTimeouts(overrides = {}) {
+  return resolveOptions(
+    "timeouts",
+    DEFAULT_TIMEOUTS,
+    overrides,
+    (value) => Number.isInteger(value) && value >= 1,
+    "a positive integer",
+  );
+}
+
 module.exports = {
   DEFAULT_HEARTBEAT,
   DEFAULT_LIMITS,
   DEFAULT_PORT,
+  DEFAULT_TIMEOUTS,
   resolveHeartbeat,
   resolveLimits,
+  resolveTimeouts,
 };

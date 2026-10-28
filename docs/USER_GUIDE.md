@@ -89,7 +89,7 @@ Send each message as JSON with a string `type`:
 
 ## Stop and Test
 
-Stop the standalone app with Ctrl+C (SIGINT). The app also handles SIGTERM, stops the engine, and closes the HTTP server.
+Stop the standalone app with Ctrl+C (SIGINT). The app also handles SIGTERM, stops accepting upgrades, waits for WebSocket close handshakes up to `WS_SHUTDOWN_DRAIN_TIMEOUT_MS`, terminates remaining clients, then closes the HTTP server. See [CONFIGURATION.md](CONFIGURATION.md) for the timeout default.
 
 Run the repository's tests with:
 

@@ -1,10 +1,12 @@
 const { WebSocket } = require("ws");
 const {
+  DEFAULT_TIMEOUTS,
   DEFAULT_HEARTBEAT,
   DEFAULT_LIMITS,
   resolveHeartbeat,
   resolveLimits,
 } = require("./config");
+const { createMetrics, safeLog } = require("./observability");
 
 function createConnectionManager(options = {}) {
   if (!options || typeof options !== "object" || Array.isArray(options)) {
@@ -15,10 +17,12 @@ function createConnectionManager(options = {}) {
     "staleThresholdMs",
     "maxConnections",
     "maxBufferedBytes",
+    "maxTotalBufferedBytes",
     "maxSubscriptionsPerClient",
     "maxGroupNameLength",
     "authorizeSubscription",
     "logger",
+    "metrics",
   ]);
   for (const key of Object.keys(options)) {
     if (!allowedOptions.has(key)) {
@@ -31,10 +35,12 @@ function createConnectionManager(options = {}) {
     staleThresholdMs = DEFAULT_HEARTBEAT.staleThresholdMs,
     maxConnections = DEFAULT_LIMITS.maxConnections,
     maxBufferedBytes = DEFAULT_LIMITS.maxBufferedBytes,
+    maxTotalBufferedBytes = DEFAULT_LIMITS.maxTotalBufferedBytes,
     maxSubscriptionsPerClient = DEFAULT_LIMITS.maxSubscriptionsPerClient,
     maxGroupNameLength = DEFAULT_LIMITS.maxGroupNameLength,
     authorizeSubscription = async () => false,
     logger = console,
+    metrics: metricsOption = {},
   } = options;
   if (typeof authorizeSubscription !== "function") {
     throw new TypeError("authorizeSubscription must be a function");
@@ -43,13 +49,16 @@ function createConnectionManager(options = {}) {
   const limits = resolveLimits({
     maxConnections,
     maxBufferedBytes,
+    maxTotalBufferedBytes,
     maxSubscriptionsPerClient,
     maxGroupNameLength,
   });
   const heartbeat = resolveHeartbeat({ heartbeatIntervalMs, staleThresholdMs });
+  const metrics = createMetrics(metricsOption, logger);
   const clients = new Map();
   const groups = new Map();
   let heartbeatTimer = null;
+  let totalBufferedBytes = 0;
 
   function add(clientId, ws, identity = {}) {
     if (clients.size >= limits.maxConnections) return null;
@@ -59,14 +68,16 @@ function createConnectionManager(options = {}) {
       identity,
       lastPong: Date.now(),
       subscriptions: new Set(),
+      pendingSends: new Set(),
     };
     clients.set(clientId, client);
+    metrics.gauge("ws.connections.active", clients.size);
     ws.on("pong", () => {
       client.lastPong = Date.now();
     });
     ws.on("close", () => remove(clientId));
     ws.on("error", (error) => {
-      logger.warn("[engine] websocket error", error);
+      safeLog(logger, "warn", "[engine] websocket error", error);
       remove(clientId);
     });
     return client;
@@ -81,7 +92,26 @@ function createConnectionManager(options = {}) {
       if (members?.size === 0) groups.delete(group);
     }
     clients.delete(clientId);
+    for (const pendingSend of [...client.pendingSends]) pendingSend.release();
+    metrics.gauge("ws.connections.active", clients.size);
     return true;
+  }
+
+  function reserveBufferedBytes(client, bytes) {
+    const pendingSend = {
+      released: false,
+      release() {
+        if (pendingSend.released) return;
+        pendingSend.released = true;
+        client.pendingSends.delete(pendingSend);
+        totalBufferedBytes -= bytes;
+        metrics.gauge("ws.buffered_bytes.total", totalBufferedBytes);
+      },
+    };
+    client.pendingSends.add(pendingSend);
+    totalBufferedBytes += bytes;
+    metrics.gauge("ws.buffered_bytes.total", totalBufferedBytes);
+    return pendingSend;
   }
 
   function get(clientId) {
@@ -99,25 +129,44 @@ function createConnectionManager(options = {}) {
   }
 
   function sendData(client, data) {
-    if (client.ws.readyState !== WebSocket.OPEN) return false;
-    if (
-      client.ws.bufferedAmount + Buffer.byteLength(data) >
-      limits.maxBufferedBytes
-    ) {
+    if (client.ws.readyState !== WebSocket.OPEN) {
+      metrics.increment("ws.messages.dropped", 1, { reason: "not_open" });
+      return false;
+    }
+    const bytes = Buffer.byteLength(data);
+    if (client.ws.bufferedAmount + bytes > limits.maxBufferedBytes) {
+      metrics.increment("ws.messages.dropped", 1, {
+        reason: "client_buffer_limit",
+      });
       try {
         client.ws.close(1013, "client is too slow");
       } catch {}
       remove(client.id);
       return false;
     }
+    if (totalBufferedBytes + bytes > limits.maxTotalBufferedBytes) {
+      metrics.increment("ws.messages.dropped", 1, {
+        reason: "aggregate_buffer_limit",
+      });
+      return false;
+    }
 
+    const pendingSend = reserveBufferedBytes(client, bytes);
     try {
       client.ws.send(data, (error) => {
-        if (error) logger.warn("[engine] websocket send failed", error);
+        pendingSend.release();
+        if (error) {
+          metrics.increment("ws.send.failures");
+          safeLog(logger, "warn", "[engine] websocket send failed", error);
+          remove(client.id);
+        }
       });
+      metrics.increment("ws.messages.out");
       return true;
     } catch (error) {
-      logger.warn("[engine] websocket send failed", error);
+      pendingSend.release();
+      metrics.increment("ws.send.failures");
+      safeLog(logger, "warn", "[engine] websocket send failed", error);
       remove(client.id);
       return false;
     }
@@ -161,7 +210,12 @@ function createConnectionManager(options = {}) {
         return false;
       }
     } catch (error) {
-      logger.error("[engine] subscription authorization failed", error);
+      safeLog(
+        logger,
+        "error",
+        "[engine] subscription authorization failed",
+        error,
+      );
       return false;
     }
     if (clients.get(clientId) !== client) return false;
@@ -231,6 +285,57 @@ function createConnectionManager(options = {}) {
     stopHeartbeat();
   }
 
+  function drain(timeoutMs = DEFAULT_TIMEOUTS.shutdownDrainMs) {
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 0) {
+      throw new TypeError("drain timeout must be a non-negative integer");
+    }
+    stopHeartbeat();
+    const snapshot = [...clients.values()];
+    if (snapshot.length === 0) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      const pending = new Map();
+      let timer = null;
+      const finish = (clientId) => {
+        const entry = pending.get(clientId);
+        if (!entry) return;
+        pending.delete(clientId);
+        entry.ws.off("close", entry.onClose);
+        remove(clientId);
+        if (pending.size === 0) {
+          if (timer) clearTimeout(timer);
+          resolve();
+        }
+      };
+
+      for (const client of snapshot) {
+        const onClose = () => finish(client.id);
+        pending.set(client.id, { ws: client.ws, onClose });
+        client.ws.once("close", onClose);
+        try {
+          client.ws.close(1001, "server shutdown");
+        } catch {
+          try {
+            client.ws.terminate();
+          } catch {}
+          finish(client.id);
+        }
+      }
+      if (pending.size === 0) {
+        resolve();
+        return;
+      }
+      timer = setTimeout(() => {
+        for (const [clientId, entry] of [...pending]) {
+          try {
+            entry.ws.terminate();
+          } catch {}
+          finish(clientId);
+        }
+      }, timeoutMs);
+    });
+  }
+
   return {
     add,
     remove,
@@ -244,6 +349,7 @@ function createConnectionManager(options = {}) {
     startHeartbeat,
     stopHeartbeat,
     closeAll,
+    drain,
   };
 }
 

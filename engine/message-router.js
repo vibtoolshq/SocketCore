@@ -1,5 +1,11 @@
-function createMessageRouter({ logger = console } = {}) {
+const { createMetrics, safeLog } = require("./observability");
+
+function createMessageRouter({
+  logger = console,
+  metrics: metricsOption = {},
+} = {}) {
   const handlers = new Map();
+  const metrics = createMetrics(metricsOption, logger);
 
   function register(type, handler) {
     if (typeof handler !== "function")
@@ -37,7 +43,8 @@ function createMessageRouter({ logger = console } = {}) {
     try {
       await handler(ctx, msg);
     } catch (err) {
-      logger.error(`[router] handler "${msg.type}" failed:`, err);
+      metrics.increment("ws.messages.handler_failures");
+      safeLog(logger, "error", `[router] handler "${msg.type}" failed`, err);
       ctx.reply({
         type: "error",
         code: "HANDLER_FAILED",

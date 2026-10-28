@@ -41,7 +41,7 @@ test("engine authenticates upgrades and isolates authorized groups", async (t) =
 
   t.after(async () => {
     for (const socket of sockets) socket.terminate();
-    engine.stop();
+    await engine.stop();
     if (server.listening) await new Promise((resolve) => server.close(resolve));
   });
 
