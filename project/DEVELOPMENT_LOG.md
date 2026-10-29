@@ -75,3 +75,10 @@
 - `npm test` passed 11 tests, 0 failures.
 - Updated configuration/API/protocol/user guides and project feature inventory. No unrelated UI/business feature changes were made.
 - Per-IP/tenant protection remains deferred pending trusted-source assumptions; aggregate limits are optional and disabled by default; no supported concurrency claim is made.
+
+## 2026-10-28 - README Visual Redesign - Complete
+
+- Reorganized the root SocketCore README around a GitHub-rendered animated hero, Mermaid architecture flow, quick start, and a capability-to-behavior-to-usage map.
+- Added original `assets/socketcore-message-flow.gif` (960x380, 12 distinct frames, 140 ms per frame, looping) and its reproducible Pillow-based generator `assets/generate_message_flow.py`.
+- Preserved verified package identity, protocol examples, configuration defaults, license status, author attribution, and the provisional-only load-study caveat. No CSS/JavaScript animation or copied artwork is used.
+- Verification: GIF dimensions/frame count/duration/loop checked; README local links resolve; `npm test` passed 12 tests, 0 failures.

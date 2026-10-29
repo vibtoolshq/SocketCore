@@ -1,48 +1,53 @@
 # SocketCore
 
-**A reusable WebSocket core for real-time Node.js applications.**
+<p align="center">
+  <strong>A reusable WebSocket core for real-time Node.js applications.</strong><br>
+  Authenticated connections, message routing, backpressure, and graceful shutdown.
+</p>
 
-SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging. It provides connection management, JSON message routing, configurable admission and backpressure limits, heartbeat checks, metrics hooks, and bounded graceful shutdown, while leaving application-specific identity and message handlers to the host application.
+<p align="center">
+  <img src="assets/socketcore-message-flow.gif" alt="Animated flow: a WebSocket client passes admission and authentication, reaches the registered application handler, then receives a reply or fan-out delivery" width="960">
+</p>
 
-> **Suggested GitHub repository description:** Reusable Node.js WebSocket engine for authenticated real-time messaging, configurable limits, backpressure, metrics hooks, and graceful shutdown.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#feature-map">Feature map</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="docs/ENGINE_API.md">Engine API</a> ·
+  <a href="docs/PRODUCTION_DEPLOYMENT.md">Deployment guide</a>
+</p>
 
-## Features
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D20-43853D?logo=node.js&logoColor=white" alt="Node.js 20 or newer">
+  <img src="https://img.shields.io/badge/CommonJS-supported-35495E" alt="CommonJS supported">
+  <img src="https://img.shields.io/badge/WebSocket-JSON%20routing-176B87" alt="WebSocket JSON routing">
+</p>
 
-- **Reusable engine API:** compose an engine with an existing Node.js HTTP or HTTPS server through `createEngine()` and `attach()`.
-- **Required authentication hook:** every engine instance requires an `authenticate(req)` callback; the standalone sample uses the `x-auth-token` header.
-- **Origin policy:** exact allowlists or an origin callback; absent `Origin` headers are allowed by the engine.
-- **Message routing:** register handlers by JSON message `type`; malformed JSON, unknown message types, and handler failures receive structured errors.
-- **Application-owned handlers:** the transport core is separate from the sample `command` and `status` handlers.
-- **Subscription authorization:** async group authorization applies to both handler context and manager subscriptions; the default policy denies subscriptions.
-- **Connection and payload limits:** finite defaults for managed connections, pending upgrades, frame payload size, client message rate, and concurrent messages.
-- **Backpressure controls:** per-client socket-buffer limits are enabled by default; optional global message-rate and aggregate pending-send byte limits can be configured.
-- **Heartbeat and liveness:** configurable ping interval and stale-pong threshold; setting the heartbeat interval to zero disables the timer.
-- **Bounded callback timeouts:** origin and authentication callbacks have deadlines; timed-out callback Promises themselves cannot be forcibly cancelled.
-- **Graceful shutdown:** stop accepting upgrades, close clients, wait for a bounded drain period, then terminate remaining sockets.
-- **Metrics and safe logging hooks:** injectable callbacks for counters, gauges, observations, and logger methods; no metrics backend is bundled.
-- **Local Python load harness:** repeatable loopback status, fanout, reconnect, latency, and resource measurements.
+SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging. It manages connections and message flow while your application owns authentication policy, business handlers, and the HTTP or HTTPS server.
 
-## Project Status
+> **At a glance:** provide an auth callback, register handlers by message type, attach to your server, then start. The standalone sample is plain HTTP; the local load results are exploratory and are not a production capacity guarantee.
 
-The package metadata reports version `1.0.0`, CommonJS, Node.js `>=20`, and the `ws` dependency. The public package export is `createEngine`. The technical package name in `package.json` remains `configurable-websocket-engine`; **SocketCore** is the project/repository brand used by these documents.
+## Contents
 
-The repository includes a sample server and a provisional local load study, not a production capacity certification. The recorded 1,000- and 2,000-client loopback runs passed their provisional test thresholds on one Windows host. They do not establish a supported concurrency number for another host, network path, proxy, TLS setup, payload, or application workload. See [Load Testing](docs/LOAD_TESTING.md) and [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md).
-
-## Requirements
-
-- Node.js `>=20`
-- npm
-- At least one non-empty `AUTH_TOKENS` value to run the standalone sample server
+- [Quick Start](#quick-start)
+- [How It Works](#how-it-works)
+- [Feature Map](#feature-map)
+- [Built-In Messages](#built-in-messages)
+- [Use as a Library](#use-as-a-library)
+- [Configuration](#configuration)
+- [Tests and Load Study](#tests-and-load-study)
+- [Security and Deployment](#security-and-deployment)
+- [Project and License](#project-and-license)
 
 ## Quick Start
 
-From a checkout of this repository:
+Requirements: Node.js `>=20`, npm, and an authentication token for the sample app.
 
 ```sh
 npm install
 ```
 
-Set a local token and start the standalone HTTP server.
+Start the standalone sample with a local token.
 
 PowerShell:
 
@@ -57,32 +62,13 @@ POSIX shell:
 AUTH_TOKENS='local-client-token' npm start
 ```
 
-The default listener is `http://localhost:8080` with WebSocket upgrades on that server. The app reads environment variables directly; it does not load a `.env` file. It uses plain HTTP and does not enforce a WebSocket URL path. Do not expose it directly to the public internet without supplying an appropriate TLS and deployment boundary.
-
-### Admin Token
-
-Admin tokens must also be listed in `AUTH_TOKENS`:
-
-```powershell
-$env:AUTH_TOKENS = "local-client-token,local-admin-token"
-$env:ADMIN_TOKENS = "local-admin-token"
-npm start
-```
-
-Use a secret manager or protected environment injection for real credentials. Do not commit or log token values.
-
-## Connect
-
-The standalone sample authenticates with `x-auth-token`. If you send an `Origin` header, it must exactly match an entry in `ALLOWED_ORIGINS`, unless wildcard is configured. A missing `Origin` is allowed and does not mean the client is authenticated.
+Connect to `ws://localhost:8080` using the `x-auth-token` header:
 
 ```js
 const WebSocket = require("ws");
 
 const socket = new WebSocket("ws://localhost:8080", {
-  headers: {
-    "x-auth-token": process.env.WS_TOKEN,
-    ...(process.env.WS_ORIGIN ? { Origin: process.env.WS_ORIGIN } : {}),
-  },
+  headers: { "x-auth-token": process.env.WS_TOKEN },
 });
 
 socket.on("message", (data) => {
@@ -90,71 +76,77 @@ socket.on("message", (data) => {
 });
 
 socket.on("open", () => {
-  socket.send(
-    JSON.stringify({
-      type: "status",
-      data: { request: "health" },
-    }),
-  );
+  socket.send(JSON.stringify({ type: "status", data: { request: "health" } }));
 });
 ```
 
-After the upgrade, the server sends a `connected` message containing a generated `clientId`. The `health` request above exercises the status echo handler; it is not an HTTP or process-health endpoint.
+The `health` request exercises the status echo handler; it is not an HTTP or process-health endpoint. The app reads environment variables directly, does not load `.env` files, uses plain HTTP, and does not enforce a URL path. See [User Guide](docs/USER_GUIDE.md) for admin setup and client details.
+
+## How It Works
+
+```mermaid
+flowchart LR
+    Client["Node.js / Python client"] -->|WebSocket upgrade + credentials| Admission["Origin and authentication"]
+    Admission -->|accepted connection| Router["JSON type router"]
+    Router --> Handler["Application-owned handler"]
+    Handler --> Manager["Connection manager"]
+    Manager -->|reply / broadcast / publish| Client
+    Admission -. limits and deadlines .-> Metrics["Metrics and safe logs"]
+    Manager -. buffers and lifecycle .-> Metrics
+```
+
+1. The host app creates `createEngine()` with a required `authenticate(req)` callback.
+2. SocketCore checks the optional Origin policy, bounds async origin/auth callbacks, and applies admission limits.
+3. The router decodes JSON and selects a handler registered for the message `type`.
+4. The handler replies to its client or uses the connection manager for authorized group operations and fan-out.
+5. The manager applies send-buffer policy, while metrics/log hooks expose activity and shutdown drains connections within a deadline.
+
+## Feature Map
+
+| Capability | What it does | How to use it |
+| --- | --- | --- |
+| Authentication and Origin | Requires an application auth callback; optionally allows exact origins or an origin callback. Missing Origin is allowed. | Configure `authenticate` and `allowedOrigins` in `createEngine`; sample app uses `AUTH_TOKENS` and `ALLOWED_ORIGINS`. |
+| Typed JSON routing | Decodes JSON, routes by string `type`, and reports malformed or unknown messages. | Register an async handler with `engine.register(type, handler)`. |
+| Connection lifecycle | Tracks identity, client IDs, groups, sends, heartbeat state, and shutdown. | Use `connectionManager` or handler context methods. |
+| Subscriptions | Authorizes group joins through the same callback for context and direct manager calls; default is deny. | Supply `authorizeSubscription`; await `ctx.subscribe(group)`. |
+| Admission and message limits | Bounds connections, pending upgrades, frame size, per-client rate, and in-flight work. | Configure `limits`; see [all environment options](docs/CONFIGURATION.md). |
+| Backpressure | Closes slow clients above per-client buffering limit; optional aggregate pending-send cap rejects a send without disconnecting the target. | Configure `maxBufferedBytes` and, after workload sizing, `maxTotalBufferedBytes`. |
+| Heartbeat | Pings clients and terminates stale connections based on pong age. | Configure `heartbeatIntervalMs` and `staleThresholdMs`; zero interval disables the timer. |
+| Callback deadlines | Bounds Origin and authentication callback wait time and releases pending-upgrade capacity on timeout. | Configure `originCheckMs` and `authenticateMs`; callback Promise work itself cannot be forcibly cancelled. |
+| Graceful drain | Stops upgrade admission, closes clients, waits for close events, then terminates remaining sockets after the deadline. | Await `engine.stop()` before closing the host HTTP/HTTPS server. |
+| Metrics and logging | Offers counter, gauge, observation, and logger callbacks with error-detail redaction in engine helper logs. | Pass `metrics` and `logger`; connect metrics to your own exporter. No backend is bundled. |
+| Sample handlers | Includes `status` and `command` examples outside the transport core. | Run `npm start`, or register your own handlers in a library application. |
+| Python load harness | Measures status replies, fan-out, reconnects, latency, and local process resources. | Follow [Load Testing](docs/LOAD_TESTING.md); this is exploratory loopback evidence only. |
 
 ## Built-In Messages
 
-The standalone app registers `status` and `command` handlers. A library consumer can register different handlers.
+The standalone app registers `status` and `command`; library consumers can register their own message types.
 
-| Message                                  | Access               | Behavior                                                                        |
-| ---------------------------------------- | -------------------- | ------------------------------------------------------------------------------- |
-| `status`                                 | Authenticated client | Acknowledges the request and echoes `data`.                                     |
-| `status` with `data.request: "snapshot"` | Admin                | Returns managed connection count and server time.                               |
-| `status` with `data.broadcast: true`     | Admin                | Broadcasts status data to every other connection; sender gets no success reply. |
-| `command` with `name: "ping"`            | Authenticated client | Returns a `pong` result with a Unix-millisecond timestamp.                      |
-| `command` with `name: "echo"`            | Authenticated client | Returns supplied `args`, or `null`.                                             |
-| `command` with `name: "broadcast"`       | Admin                | Sends args to other connections and returns the successful send count.          |
-| `command` with `name: "shutdown-client"` | Admin                | Closes the named connection with code `1000`.                                   |
+| Request | Access | Behavior |
+| --- | --- | --- |
+| `{ "type":"status", "data":{...} }` | Authenticated client | Replies with acknowledgement, server time, and echoed data. |
+| `status` with `data.request: "snapshot"` | Admin | Returns managed connection count and server time. |
+| `status` with `data.broadcast: true` | Admin | Sends status to every other connection; sender gets no success reply. |
+| `command` with `name: "ping"` | Authenticated client | Returns `{ pong:true, at:<unix-ms> }`. |
+| `command` with `name: "echo"` | Authenticated client | Returns `args`, or `null`. |
+| `command` with `name: "broadcast"` | Admin | Sends `args` to other clients and returns the successful send count. |
+| `command` with `name: "shutdown-client"` | Admin | Closes the specified client with code `1000`. |
 
-Example request and response:
+Example ping exchange:
 
 ```json
-{ "type": "command", "name": "ping" }
+{"type":"command","name":"ping"}
 ```
 
 ```json
-{
-  "type": "command",
-  "name": "ping",
-  "result": { "pong": true, "at": 1793217600000 }
-}
+{"type":"command","name":"ping","result":{"pong":true,"at":1793217600000}}
 ```
 
-Broadcast counts represent successful `ws.send` calls, not confirmation that recipients processed the message. Exact message schemas, access rules, errors, and close codes are in [WEBSOCKET_PROTOCOL.md](docs/WEBSOCKET_PROTOCOL.md).
-
-## Configuration
-
-The standalone application maps environment variables to engine options. Principal defaults are:
-
-| Setting                              |              Default |
-| ------------------------------------ | -------------------: |
-| HTTP port                            |               `8080` |
-| Maximum managed connections          |              `10000` |
-| Maximum pending upgrades             |                `256` |
-| Per-client messages per second       |                `100` |
-| Concurrent messages per client       |                 `32` |
-| Inbound payload                      |        `65536` bytes |
-| Per-client buffered bytes            |      `1048576` bytes |
-| Maximum subscriptions per client     |                `100` |
-| Maximum group name length            |     `128` characters |
-| Heartbeat interval / stale threshold | `30000` / `45000` ms |
-| Origin/auth callback timeout         |   `5000` / `5000` ms |
-| Shutdown drain timeout               |           `10000` ms |
-
-The optional engine-wide message-rate and aggregate pending-send byte caps default to `Infinity` (disabled). Configure finite limits from representative workload measurements; defaults are not capacity promises. See [CONFIGURATION.md](docs/CONFIGURATION.md) for all environment variables and validation rules.
+Broadcast counts measure successful `ws.send` calls; they do not prove that recipients processed a message. See [Protocol Reference](docs/WEBSOCKET_PROTOCOL.md) for complete schemas, errors, access rules, and close codes.
 
 ## Use as a Library
 
-The package root exports `createEngine`. The application owns the HTTP/HTTPS server and its listen/TLS setup.
+The package root exports `createEngine`. The embedding application creates and owns its HTTP/HTTPS server, TLS, routes, and listen lifecycle.
 
 ```js
 const { createEngine } = require("configurable-websocket-engine");
@@ -171,7 +163,7 @@ engine.register("status", async (ctx, message) => {
 });
 
 // `server` is the application's existing HTTP(S) server.
-const detach = engine.attach(server);
+engine.attach(server);
 engine.start();
 
 async function shutdown() {
@@ -180,54 +172,60 @@ async function shutdown() {
 }
 ```
 
-The function names shown inside callbacks (`verifyApplicationCredential`, `closeHttpServer`) are application-owned examples, not package exports. See [ENGINE_API.md](docs/ENGINE_API.md) for option contracts, lifecycle, metrics, and manager APIs.
+`verifyApplicationCredential`, `server`, and `closeHttpServer` are application-owned. For callback contracts, lifecycle, metrics, and manager APIs, see [Engine API](docs/ENGINE_API.md).
 
-## Limits and Errors
+## Configuration
 
-- Upgrade rejection statuses include `401` for invalid authentication, `403` for a disallowed Origin, `503` for capacity/stopping/callback timeout, and `500` for unexpected upgrade handling errors.
-- Message errors include `BAD_JSON`, `BAD_MESSAGE`, `UNKNOWN_TYPE`, and `HANDLER_FAILED`; sample command handlers also return `BAD_COMMAND`, `BAD_ARGS`, `NOT_FOUND`, and `FORBIDDEN` where applicable.
-- Close codes include `1000` for admin shutdown, `1001` for server shutdown, `1008` for rate policy violations, `1009` for oversized inbound payloads, and `1013` for overload/concurrency or slow-client cases.
-- The standalone app does not configure a subscription authorizer or a built-in join message. Subscriptions are denied by default.
-- No HTTP health endpoint, path router, subprotocol negotiation, token refresh, persistent store, distributed pub/sub, or metrics exporter is included.
+The package itself reads no environment variables. The standalone app maps its environment to engine settings; these are the primary defaults.
+
+| Setting | Default |
+| --- | ---: |
+| HTTP port | `8080` |
+| Managed connections / pending upgrades | `10000` / `256` |
+| Per-client messages/sec / in-flight messages | `100` / `32` |
+| Inbound payload | `65536` bytes |
+| Per-client buffered bytes | `1048576` bytes |
+| Subscriptions/client / group name length | `100` / `128` |
+| Heartbeat interval / stale threshold | `30000` / `45000` ms |
+| Origin/auth timeout | `5000` / `5000` ms |
+| Shutdown drain timeout | `10000` ms |
+
+Optional global message-rate and total buffered-byte caps default to `Infinity` in the library and are disabled unless set. Configure finite values from a representative workload; defaults are guardrails, not capacity promises. See [Configuration Reference](docs/CONFIGURATION.md) for validation and all environment variables.
 
 ## Tests and Load Study
 
-Run the correctness suite:
+Run the Node.js correctness suite:
 
 ```sh
 npm test
 ```
 
-The repository has 12 Node.js tests. Python load-test setup and the measured local results are documented in [LOAD_TESTING.md](docs/LOAD_TESTING.md). The 2,000-client loopback result passed the provisional profile on Windows Server 2022 with Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, and 7.8 GiB installed RAM. It is exploratory evidence for that synthetic test only, not a production SLO or supported-N guarantee.
+The current suite contains 12 tests. The recorded 1,000- and 2,000-client loopback profiles passed provisional thresholds on one Windows Server 2022 host with Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, and 7.8 GiB installed RAM. At 2,000 clients, the run recorded p95/p99 latency of 7.584/178.432 ms and completed two 500-client reconnect waves.
+
+These synthetic local measurements are not production SLOs and do not establish supported concurrency on another host, network path, proxy, TLS setup, payload, fan-out pattern, or application workload. See [Load Testing](docs/LOAD_TESTING.md) for full measurements and limits.
 
 ## Security and Deployment
 
-Use a strong application authentication provider, a browser Origin allowlist, finite workload limits, TLS, secret management, observability, and graceful process supervision appropriate to your deployment. The standalone sample uses plain HTTP, accepts a missing Origin, and does not enforce a path; the engine does not infer trusted client IPs from forwarded headers. Review [SECURITY.md](SECURITY.md) and [PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md) before deployment.
+- The standalone sample uses plain HTTP, accepts a missing Origin, and does not enforce a URL path.
+- Origin validation is not authentication; require a real application authentication callback.
+- The engine does not infer trusted client IPs from forwarded headers.
+- The standalone app has no HTTP health endpoint or subscription authorizer; group subscriptions default to deny.
+- Finite global limits, TLS, secrets, monitoring, alerting, proxy behavior, and process supervision must be configured and tested for the target deployment.
 
-## Documentation
+Read [Security Policy](SECURITY.md) and [Production Deployment Boundaries](docs/PRODUCTION_DEPLOYMENT.md) before deployment.
 
-- [User Guide](docs/USER_GUIDE.md)
-- [Configuration](docs/CONFIGURATION.md)
-- [WebSocket Protocol](docs/WEBSOCKET_PROTOCOL.md)
-- [Engine API](docs/ENGINE_API.md)
-- [Production Deployment Boundaries](docs/PRODUCTION_DEPLOYMENT.md)
-- [Load Testing](docs/LOAD_TESTING.md)
-- [Project Overview](project/PROJECT_OVERVIEW.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security Policy](SECURITY.md)
-- [Support](SUPPORT.md)
-- [Authors and Contacts](AUTHORS.md)
+## Project and License
 
-## Author and Organization
+- **Project:** SocketCore.
+- **Description:** Reusable Node.js WebSocket engine for authenticated real-time messaging, configurable limits, backpressure, metrics hooks, and graceful shutdown.
+- **Package metadata:** `configurable-websocket-engine` version `1.0.0`; CommonJS; Node.js `>=20`; root export `createEngine`.
+- **Author attribution:** Md Nurnobi and Vib Tools. Verified contact and profile details are in [AUTHORS.md](AUTHORS.md); no unverified executive or legal title is implied.
+- **License:** No `LICENSE` file is present. Reuse and redistribution terms have not been specified; do not assume this project is open source.
 
-SocketCore is attributed to **Md Nurnobi** and **Vib Tools**. Author attribution and verified company contact channels are listed in [AUTHORS.md](AUTHORS.md). No founder, CEO, or legal-owner title is asserted.
+## More
 
-## License
+- [User Guide](docs/USER_GUIDE.md) · [Configuration](docs/CONFIGURATION.md) · [Protocol](docs/WEBSOCKET_PROTOCOL.md)
+- [Engine API](docs/ENGINE_API.md) · [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) · [Load Testing](docs/LOAD_TESTING.md)
+- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Authors](AUTHORS.md)
 
-No `LICENSE` file is currently present in this repository. A license has not been specified here; do not assume permission to use, modify, or redistribute the code. The repository owner should select and add a license before describing SocketCore as open source.
-
-## GitHub Topics
-
-Suggested repository topics: `nodejs`, `websocket`, `real-time-messaging`, `connection-management`, `backpressure`, `graceful-shutdown`, `observability`, `python-load-testing`.
-
-Descriptive documentation and topics can improve clarity and discoverability, but GitHub/Google indexing and search ranking depend on external systems and are not guaranteed by README wording. Google Search Console access and verification must be handled by the site/repository owner where applicable.
+Suggested repository topics: `nodejs`, `websocket`, `real-time-messaging`, `connection-management`, `backpressure`, `graceful-shutdown`, `observability`, `python-load-testing`. Descriptive README content can improve clarity and discoverability, but GitHub/Google indexing and search ranking are controlled by external systems and are not guaranteed.
