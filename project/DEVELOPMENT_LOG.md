@@ -17,6 +17,15 @@
 - Updated user load guide, docs index/manifest, project overview, phase completion log, implementation status, and roadmap. No production dependency, protocol change, remote host, or production capacity claim was added.
 - Residual limitations: synthetic loopback workload only; real client payload/rate mix, deployment target, TLS/proxy behavior, resource budgets, and production SLO remain unknown. No production-supported N is claimed.
 
+## 2026-10-28 - Documentation Completeness Pass - Complete
+
+- Reconciled all user guides with `app.js`, engine modules, built-in handlers, package metadata, and tests.
+- Corrected command response examples and documented the current close metric; expanded configuration validation, origin/auth policy, lifecycle, handler/manager contracts, and troubleshooting.
+- Added `docs/PRODUCTION_DEPLOYMENT.md` to separate implemented engine behavior from TLS, secrets, proxy, monitoring, supervision, and workload-sizing responsibilities of the embedding application/operator.
+- Expanded load-test CLI/report documentation and kept the measured loopback results explicitly provisional; no production readiness or supported concurrency guarantee is stated.
+- Updated docs index/manifest and synchronized private status/roadmap notes. No code, protocol, dependency, or deployment behavior changed.
+- Verification: `npm test` passed 12 tests; Markdown local links and docs manifest inventory checked.
+
 # Development Log
 
 ## 2026-10-28 - Add tracked project records and user guides

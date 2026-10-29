@@ -18,13 +18,13 @@ This is a WebSocket transport engine and sample server, not a web page or REST A
 | `engine/message-router.js`     | JSON decoding, type dispatch, protocol errors, handler failure metric/log.                                 |
 | `handlers/command.handler.js`  | Sample ping/echo/admin broadcast/client shutdown commands.                                                 |
 | `handlers/status.handler.js`   | Sample status acknowledgement, admin snapshot and broadcast.                                               |
-| `load-test/server.js`          | Test-only loopback server composing the engine and sample handlers for scale measurements.                  |
+| `load-test/server.js`          | Test-only loopback server composing the engine and sample handlers for scale measurements.                 |
 | `test/engine.test.js`          | Integration coverage for handshake, auth, groups, limits and cleanup.                                      |
 | `test/phase1.test.js`          | Phase 1 config, subscription-authorization, and broadcast regression tests.                                |
 | `test/phase2.test.js`          | Phase 2 timeout, drain, aggregate cap, send failure, metrics, and redaction tests.                         |
 | `test/phase3.test.js`          | Proves two application configurations compose through public engine APIs without core specialization.      |
-| `test/load/clients.py`         | Async Python workload, response/fanout/reconnect checks, latency and resource report.                       |
-| `test/requirements-load.txt`   | Pinned test-only Python WebSocket client dependency.                                                        |
+| `test/load/clients.py`         | Async Python workload, response/fanout/reconnect checks, latency and resource report.                      |
+| `test/requirements-load.txt`   | Pinned test-only Python WebSocket client dependency.                                                       |
 | `package.json`                 | Package metadata, exports, scripts, Node floor, dependency.                                                |
 
 ## Implemented Phase 1-4 Behavior
@@ -47,4 +47,4 @@ The public root package export is `createEngine`; config/observability modules a
 
 Per-IP/tenant limits remain deferred until a trusted proxy and tenant-identity contract are specified. The repository has no metrics backend, persistent store, or production-qualified concurrency number. Optional aggregate limits being disabled by default is not capacity evidence. The local load harness does not test TLS, reverse proxies, remote hosts, or a consuming application's actual traffic profile. No UI exists.
 
-User setup/protocol/API details are in `../docs/`; private phase scope and readiness decisions are in `../notes/PRODUCTION_READINESS_ROADMAP.md`.
+User setup, protocol, API, load-testing, and deployment guides are indexed in [../docs/README.md](../docs/README.md). Private phase scope and readiness decisions are in `../notes/PRODUCTION_READINESS_ROADMAP.md`.

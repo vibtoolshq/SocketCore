@@ -1,6 +1,6 @@
 # Engine Library API
 
-The package exports only `{ createEngine }` from its root CommonJS entry. Internal files such as `engine/config.js` and `engine/observability.js` are implementation details, not package subpath exports.
+The package exports only `{ createEngine }` from its root CommonJS entry. Internal files such as `engine/config.js` and `engine/observability.js` are implementation details, not package subpath exports. The package does not create an HTTP listener; the embedding application owns server creation, TLS, routes, listen, and close.
 
 ## Factory Options
 
@@ -29,6 +29,12 @@ const engine = createEngine({
 | `logger`                | `console`           | Logger; errors passed through engine helpers are reduced to safe `name`/`code` fields.                                           |
 | `metrics`               | `{}`                | Optional `increment`, `gauge`, `observe` callbacks. Callback throws/rejections are isolated.                                     |
 
+`limits`, `heartbeat`, and `timeouts` are shallow overrides. Unknown keys throw `TypeError`. Limit values must be positive integers or `Infinity`; heartbeat values must be non-negative integers; timeout values must be positive integers. The optional aggregate message and pending-send limits default to `Infinity`. The documented `websocket` setting is `perMessageDeflate`, default false; arbitrary WebSocket server options are not forwarded.
+
+`allowedOrigins` accepts an array of exact origin strings, the string `"*"`, or an async-capable callback `(origin, req)`. A missing Origin is always allowed. An empty array therefore rejects every provided Origin while still allowing a request with no Origin header. This policy does not authenticate a client.
+
+`authenticate(req)` must resolve to a non-null, non-array object identity or the upgrade is rejected. A rejected/throwing callback results in an upgrade error; a callback exceeding `timeouts.authenticateMs` receives an HTTP 503 rejection. The timeout cannot cancel arbitrary work already started by the callback.
+
 The package does not expose config or observability subpaths; consumers configure the supported defaults and hooks through `createEngine`. See [CONFIGURATION.md](CONFIGURATION.md) for standalone environment mapping.
 
 ## Application Composition and Extension Contracts
@@ -47,9 +53,42 @@ The Phase 3 integration test configures two independent servers with different c
 
 No database, Redis/NATS client, serialization dependency, or dynamic plugin mechanism is part of the current extension surface.
 
+## Minimal Application Example
+
+The following illustrates ownership boundaries. `verifyCredential` and the certificate loading mechanism are application responsibilities and are not provided by this package.
+
+```js
+const https = require("node:https");
+const { createEngine } = require("configurable-websocket-engine");
+
+const server = https.createServer(tlsOptions);
+const engine = createEngine({
+  authenticate: (req) => verifyCredential(req.headers.authorization),
+  allowedOrigins: ["https://client.example"],
+});
+
+engine.register("status", async (ctx, message) => {
+  ctx.reply({ type: "status", result: message.data ?? null });
+});
+engine.attach(server);
+engine.start();
+server.listen(8443);
+
+async function shutdown() {
+  await engine.stop();
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+}
+```
+
+Production TLS, secret handling, graceful process signals, monitoring integration, and workload sizing are application/deployment responsibilities; see [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md).
+
 ## Metrics Contract
 
-Callbacks receive `(name, value, attributes)`. Current metric names include `ws.connections.active`, `ws.upgrades.accepted`, `ws.upgrades.rejected`, `ws.messages.in`, `ws.messages.out`, `ws.messages.dropped`, `ws.messages.handler_failures`, `ws.messages.dispatch_failures`, `ws.send.failures`, `ws.buffered_bytes.total`, and `ws.event_loop_lag_ms`. Attributes are low-cardinality reasons/status codes; tokens, request URLs and identities are not labels. Event-loop lag sampling runs only when metrics are configured and the engine is started.
+Callbacks receive `(name, value, attributes)`. Current metric names include `ws.connections.active` (gauge), `ws.connections.closed` (counter), `ws.upgrades.accepted`, `ws.upgrades.rejected`, `ws.messages.in`, `ws.messages.out`, `ws.messages.dropped`, `ws.messages.handler_failures`, `ws.messages.dispatch_failures`, `ws.send.failures`, `ws.buffered_bytes.total` (gauge), and `ws.event_loop_lag_ms` (observation). Not every metric callback is invoked with all three arguments; omitted values/attributes are `undefined` according to the event.
+
+Attributes are low-cardinality reasons/status codes; tokens, request URLs, and identities are not labels. Event-loop-lag sampling runs only when at least one metrics callback is configured and the engine is started. The default sampling interval is 10 seconds (`timeouts.metricsIntervalMs`); the standalone app does not expose it as an environment variable.
 
 The hooks do not include a metrics backend/exporter. The embedding application owns storage/export and must make its callback safe for its own environment.
 
@@ -63,6 +102,8 @@ The hooks do not include a metrics backend/exporter. The embedding application o
 | `stop()`                  | Returns an idempotent `Promise`; detaches upgrades, drains clients up to `shutdownDrainMs`, terminates remaining sockets, stops heartbeat/metrics, then closes the `ws` server. |
 | `connectionManager`       | Exposes connection lookup, sends, subscriptions, `drain(timeoutMs)`, and existing manager methods.                                                                              |
 | `messageRouter`           | Exposes `register`, `dispatch`, and handler map.                                                                                                                                |
+
+`attach(server)` may be called repeatedly with the same server and returns a detach function. Attaching the same engine to a different server while attached throws. After `stop()`, the engine cannot be restarted or reattached. The caller should await `stop()` before closing the underlying HTTP/HTTPS listener.
 
 The engine uses `ws` `noServer` mode. It does not provide path routing or TLS setup.
 
@@ -80,5 +121,23 @@ The engine uses `ws` `noServer` mode. It does not provide path routing or TLS se
 | `publish(group, payload, filter?)` | Returns successful send count to matching members.                                                                  |
 | `drain(timeoutMs?)`                | Closes clients with 1001, waits for close events up to timeout, terminates/removes remaining clients, and resolves. |
 | `closeAll()`                       | Immediate close/removal compatibility method; use `drain()` for shutdown.                                           |
+
+The optional `filter` passed to `broadcast`/`publish` is called synchronously with each managed client record. `broadcast` sends to every matching connection; `publish` sends only to current group members. Both counts represent successful synchronous `ws.send` calls and do not confirm that recipients parsed or acted on the message.
+
+## Handler Context and Message Routing
+
+Handlers are registered as `engine.register(type, async (ctx, message) => { ... })`. `type` is the incoming JSON string's exact `type` value. The context provides:
+
+| Member | Behavior |
+| --- | --- |
+| `ctx.clientId` | Generated connection identifier. |
+| `ctx.identity` / `ctx.meta` | Authenticated identity object. |
+| `ctx.client` | Managed connection record. |
+| `ctx.reply(payload)` | Sends a JSON-serialized payload to this client; returns a boolean. |
+| `ctx.subscribe(group)` | Promise resolving to whether the group subscription was authorized and created. |
+| `ctx.unsubscribe(group)` | Removes this client's group membership; returns a boolean. |
+| `ctx.publish(group, payload)` | Sends to group members; returns successful send count. |
+
+The router returns protocol errors for malformed JSON, missing/non-string message type, and unknown handler type. Handler exceptions are logged through the safe logger helper and produce a generic `HANDLER_FAILED` response. Keep handler work bounded; message concurrency is limited per client, but handler execution is not automatically cancelled on disconnect.
 
 `connectionManager.subscribe` is async since Phase 1. Callers must await its `Promise<boolean>`. The handler context passes the original upgrade request to the same authorizer path.

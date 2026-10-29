@@ -31,6 +31,22 @@ C:\Python312\python.exe test/load/clients.py --clients 2000 --ramp-rate 20 --soa
 
 The 2,000-client run performs two concurrent 500-client reconnect waves after the steady clients close, while the admin sender remains connected. Both waves are included in the pass/fail result.
 
+### Workload Options
+
+| Option | Default | Meaning |
+| --- | ---: | --- |
+| `--clients` | `1000` | Number of steady-state authenticated clients. |
+| `--ramp-rate` | `20` | Number of clients scheduled per one-second ramp step. |
+| `--soak-seconds` | `60` | Duration of steady-state traffic after connection attempts finish. |
+| `--request-interval` | `10` | Seconds between each client's status requests. |
+| `--broadcast-interval` | `10` | Seconds between admin status broadcasts. |
+| `--broadcast-grace` | `3` | Seconds allowed for in-flight broadcast deliveries after sending stops. |
+| `--reconnect-burst-clients` | `500` | Simultaneous client connection attempts in each of two reconnect waves. |
+| `--response-timeout` | `10` | Maximum seconds to wait for each status response. |
+| `--connect-timeout` | `120` | Maximum seconds to wait for all initial client attempts to finish. |
+
+`clients`, `ramp-rate`, and `soak-seconds` must be positive integers. Request, broadcast, and response-timeout values must be positive. The load harness does not add load to the production package or modify application configuration.
+
 These are provisional local-study targets, not user-approved production SLOs:
 
 - Every requested client connects and no unexpected client/server errors occur.
@@ -53,6 +69,6 @@ These are exploratory results against a synthetic local workload, not production
 
 ## Output
 
-The script prints a JSON report containing environment, workload, connection/request/broadcast totals, response ratios, p50/p95/p99 latency, reconnect wave results, server errors/counters, peak RSS/heap/CPU/active connections/buffer use/event-loop lag, final post-drain gauges, and a provisional pass/fail result. A failed provisional target is a failed exploratory run, not permission to tune unrelated engine behavior.
+The script prints a JSON report containing environment, workload, initial connection totals, request/broadcast totals, response ratios, p50/p95/p99/max latency, reconnect wave outcomes/durations, client/admin/server-log errors, server counters, peak RSS/heap/CPU/active connections/buffer use/event-loop lag, final post-drain gauges, server exit code, and a provisional pass/fail result. A failed provisional target is a failed exploratory run, not permission to tune unrelated engine behavior.
 
 No distributed metrics backend, test service, Python production dependency, app route, protocol field, or production feature is added by this harness.
