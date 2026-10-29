@@ -10,5 +10,6 @@ Inventory of direct children in `docs/`. Update this file when a child is added,
 | `CONFIGURATION.md`      | Current snapshot | Environment variables, defaults, validation, and configuration behavior.                        |
 | `WEBSOCKET_PROTOCOL.md` | Current snapshot | Handshake behavior, message contract, built-in features, extension context, limits, and errors. |
 | `ENGINE_API.md`         | Current snapshot | Library factory options, lifecycle, connection manager, and message router APIs.                |
+| `LOAD_TESTING.md`       | Phase 4 complete | Python load-harness setup, measured local profiles, and qualification limitations.              |
 
 There are no subdirectories in `docs/` in this snapshot.

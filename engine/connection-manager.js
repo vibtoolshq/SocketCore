@@ -75,7 +75,10 @@ function createConnectionManager(options = {}) {
     ws.on("pong", () => {
       client.lastPong = Date.now();
     });
-    ws.on("close", () => remove(clientId));
+    ws.on("close", () => {
+      metrics.increment("ws.connections.closed");
+      remove(clientId);
+    });
     ws.on("error", (error) => {
       safeLog(logger, "warn", "[engine] websocket error", error);
       remove(clientId);

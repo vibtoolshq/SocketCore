@@ -6,6 +6,17 @@
 - Verification: `npm test` passed 12 tests, 0 failures; exact phase scope/results are recorded in the phase completion log.
 - No transport behavior, protocol, dependency, UI, or application business feature was changed.
 
+## 2026-10-28 - Phase 4: Scale Qualification - Complete (provisional local profile)
+
+- Resumed from the latest closed session after a forensic match of the session-store history, private plan, project records, and current source. Phase 4 approval was explicit; the session had stopped during the load harness syntax check.
+- Repaired the Python workload/report, moved the temporary Node server to `load-test/server.js` so `node --test` does not auto-discover it, and added close-event measurement through the existing metrics callback.
+- The final report includes response/fanout ratios, reconnect wave outcomes, p50/p95/p99 latency, peak RSS/heap/CPU/active connections/buffer use/event-loop lag, error counts, and post-drain connection/buffer gauges.
+- 1,000-client profile: 5,999/5,999 responses; 5,000/5,000 broadcast deliveries; p95/p99 3.567/48.384 ms; peak RSS 75.65 MiB; no client/admin errors.
+- 2,000-client profile: 12,001/12,001 responses; 10,000/10,000 broadcast deliveries; p95/p99 7.584/178.432 ms; two 500/500 reconnect waves in 1.160 s and 1.441 s; 0 client/admin/server-log errors and 0 request timeouts; peak RSS 108.29 MiB and heap 34.24 MiB; final active connections/buffered bytes 0.
+- Verification: Python 3.12 syntax check and relocated-harness smoke profile passed; final `npm test` passed 12 tests, 0 failures; final 2k profile passed all provisional local targets and the server exited 0.
+- Updated user load guide, docs index/manifest, project overview, phase completion log, implementation status, and roadmap. No production dependency, protocol change, remote host, or production capacity claim was added.
+- Residual limitations: synthetic loopback workload only; real client payload/rate mix, deployment target, TLS/proxy behavior, resource budgets, and production SLO remain unknown. No production-supported N is claimed.
+
 # Development Log
 
 ## 2026-10-28 - Add tracked project records and user guides

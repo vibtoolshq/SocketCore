@@ -8,6 +8,7 @@ This tracked directory contains verified setup and usage instructions for the cu
 - [CONFIGURATION.md](CONFIGURATION.md): environment variables, defaults, validation, and origin/token behavior.
 - [WEBSOCKET_PROTOCOL.md](WEBSOCKET_PROTOCOL.md): handshake results, message shapes, built-in handlers, extension context, limits, and errors.
 - [ENGINE_API.md](ENGINE_API.md): using the package as a library, factory options, lifecycle methods, and exposed manager/router APIs.
+- [LOAD_TESTING.md](LOAD_TESTING.md): installing the isolated Python test client and running the local scale profile.
 - [MINIFEST.md](MINIFEST.md): direct directory inventory and document status.
 
 ## Accuracy
