@@ -1,6 +1,8 @@
-# Project Records
+# SocketCore Project Records
 
-This tracked directory records the verified design and development history of the WebSocket engine. Use it for engineering context, source ownership, implementation phases, and dated change records. It is distinct from `notes/`, which is personal, local, and ignored by Git.
+**A reusable WebSocket core for real-time Node.js applications.**
+
+This tracked directory records the verified design and development history of SocketCore, a configurable Node.js WebSocket engine for authenticated real-time messaging. Use it for engineering context, source ownership, implementation phases, and dated change records. It is distinct from `notes/`, which is personal, local, and ignored by Git.
 
 ## How to Use This Directory
 
@@ -12,4 +14,4 @@ This tracked directory records the verified design and development history of th
 
 ## Current Scope
 
-The repository is a CommonJS Node.js WebSocket transport engine using `ws`. The verified architecture and current feature behavior are in `PROJECT_OVERVIEW.md`; client-facing setup and protocol instructions are in `../docs/`.
+The repository is a CommonJS Node.js WebSocket transport engine using `ws`; package metadata still names the distribution `configurable-websocket-engine`. The verified architecture and current feature behavior are in [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md); client-facing setup and protocol instructions are indexed in [../docs/README.md](../docs/README.md). The root [README](../README.md) is the GitHub overview.

@@ -1,4 +1,6 @@
-# Engine Library API
+# SocketCore Engine Library API
+
+**A reusable WebSocket core for real-time Node.js applications.** SocketCore exposes a small CommonJS API for composing authenticated WebSocket transport with application-owned servers and handlers.
 
 The package exports only `{ createEngine }` from its root CommonJS entry. Internal files such as `engine/config.js` and `engine/observability.js` are implementation details, not package subpath exports. The package does not create an HTTP listener; the embedding application owns server creation, TLS, routes, listen, and close.
 
@@ -128,15 +130,15 @@ The optional `filter` passed to `broadcast`/`publish` is called synchronously wi
 
 Handlers are registered as `engine.register(type, async (ctx, message) => { ... })`. `type` is the incoming JSON string's exact `type` value. The context provides:
 
-| Member | Behavior |
-| --- | --- |
-| `ctx.clientId` | Generated connection identifier. |
-| `ctx.identity` / `ctx.meta` | Authenticated identity object. |
-| `ctx.client` | Managed connection record. |
-| `ctx.reply(payload)` | Sends a JSON-serialized payload to this client; returns a boolean. |
-| `ctx.subscribe(group)` | Promise resolving to whether the group subscription was authorized and created. |
-| `ctx.unsubscribe(group)` | Removes this client's group membership; returns a boolean. |
-| `ctx.publish(group, payload)` | Sends to group members; returns successful send count. |
+| Member                        | Behavior                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `ctx.clientId`                | Generated connection identifier.                                                |
+| `ctx.identity` / `ctx.meta`   | Authenticated identity object.                                                  |
+| `ctx.client`                  | Managed connection record.                                                      |
+| `ctx.reply(payload)`          | Sends a JSON-serialized payload to this client; returns a boolean.              |
+| `ctx.subscribe(group)`        | Promise resolving to whether the group subscription was authorized and created. |
+| `ctx.unsubscribe(group)`      | Removes this client's group membership; returns a boolean.                      |
+| `ctx.publish(group, payload)` | Sends to group members; returns successful send count.                          |
 
 The router returns protocol errors for malformed JSON, missing/non-string message type, and unknown handler type. Handler exceptions are logged through the safe logger helper and produce a generic `HANDLER_FAILED` response. Keep handler work bounded; message concurrency is limited per client, but handler execution is not automatically cancelled on disconnect.
 

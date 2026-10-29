@@ -1,8 +1,19 @@
-# Project Overview
+# SocketCore Project Overview
+
+**A reusable WebSocket core for real-time Node.js applications.**
 
 ## Verified Snapshot
 
-This document describes the inspected project after Phase 4 on 2026-10-28. The package is `configurable-websocket-engine` version `1.0.0`, CommonJS, Node.js `>=20`, with `ws` `^8.18.3`. Package root export is `createEngine`; the standalone app is `app.js`.
+This document describes SocketCore after Phase 4 on 2026-10-28. SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging. The package metadata name is `configurable-websocket-engine`, version `1.0.0`, CommonJS, Node.js `>=20`, with `ws` `^8.18.3`. Package root export is `createEngine`; the standalone app is `app.js`.
+
+## Project Identity
+
+- **Project name:** SocketCore.
+- **Tagline:** A reusable WebSocket core for real-time Node.js applications.
+- **Suggested repository description:** Reusable Node.js WebSocket engine for authenticated real-time messaging, configurable limits, backpressure, metrics hooks, and graceful shutdown.
+- **Author attribution:** Md Nurnobi; see the verified profile and company contacts in the root [AUTHORS.md](../AUTHORS.md).
+- **Organization:** Vib Tools; no unverified executive or legal title is implied.
+- **License:** No `LICENSE` file is present; reuse terms are unspecified.
 
 This is a WebSocket transport engine and sample server, not a web page or REST API. No app-specific HTTP route, frontend page, or upgrade path check exists.
 

@@ -1,4 +1,4 @@
-# Documentation Directory MINIFEST
+# SocketCore Documentation Directory MINIFEST
 
 Inventory of direct children in `docs/`. Update this file when a child is added, removed, or renamed.
 

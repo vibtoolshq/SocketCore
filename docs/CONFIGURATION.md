@@ -1,4 +1,6 @@
-# Configuration Reference
+# SocketCore Configuration Reference
+
+**A reusable WebSocket core for real-time Node.js applications.** This reference documents SocketCore's standalone environment variables and the equivalent library configuration boundaries.
 
 The standalone app reads settings from `process.env` in `app.js`; it does not load a `.env` file. Port, limits, heartbeat and timeout defaults are centralized in `engine/config.js`. Integer inputs are validated at startup. Unknown `limits`, `heartbeat`, and `timeouts` keys passed to the library API throw. The standalone app translates its environment variables into those library options; the package does not read environment variables itself.
 

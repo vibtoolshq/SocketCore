@@ -1,6 +1,6 @@
-# Local WebSocket Load Study
+# SocketCore Local WebSocket Load Study
 
-This guide documents the Phase 4 test-only harness: Python clients in `test/load/` and the temporary Node server in `load-test/server.js`. The server uses the same `createEngine` factory and built-in status/command handlers. It does not launch `app.js`; app packaging, TLS, proxies, and remote hosts are outside this local profile.
+**A reusable WebSocket core for real-time Node.js applications.** This guide documents the SocketCore Phase 4 test-only harness: Python clients in `test/load/` and the temporary Node server in `load-test/server.js`. The server uses the same `createEngine` factory and built-in status/command handlers. It does not launch `app.js`; app packaging, TLS, proxies, and remote hosts are outside this local profile.
 
 ## Prerequisites
 
@@ -33,17 +33,17 @@ The 2,000-client run performs two concurrent 500-client reconnect waves after th
 
 ### Workload Options
 
-| Option | Default | Meaning |
-| --- | ---: | --- |
-| `--clients` | `1000` | Number of steady-state authenticated clients. |
-| `--ramp-rate` | `20` | Number of clients scheduled per one-second ramp step. |
-| `--soak-seconds` | `60` | Duration of steady-state traffic after connection attempts finish. |
-| `--request-interval` | `10` | Seconds between each client's status requests. |
-| `--broadcast-interval` | `10` | Seconds between admin status broadcasts. |
-| `--broadcast-grace` | `3` | Seconds allowed for in-flight broadcast deliveries after sending stops. |
-| `--reconnect-burst-clients` | `500` | Simultaneous client connection attempts in each of two reconnect waves. |
-| `--response-timeout` | `10` | Maximum seconds to wait for each status response. |
-| `--connect-timeout` | `120` | Maximum seconds to wait for all initial client attempts to finish. |
+| Option                      | Default | Meaning                                                                 |
+| --------------------------- | ------: | ----------------------------------------------------------------------- |
+| `--clients`                 |  `1000` | Number of steady-state authenticated clients.                           |
+| `--ramp-rate`               |    `20` | Number of clients scheduled per one-second ramp step.                   |
+| `--soak-seconds`            |    `60` | Duration of steady-state traffic after connection attempts finish.      |
+| `--request-interval`        |    `10` | Seconds between each client's status requests.                          |
+| `--broadcast-interval`      |    `10` | Seconds between admin status broadcasts.                                |
+| `--broadcast-grace`         |     `3` | Seconds allowed for in-flight broadcast deliveries after sending stops. |
+| `--reconnect-burst-clients` |   `500` | Simultaneous client connection attempts in each of two reconnect waves. |
+| `--response-timeout`        |    `10` | Maximum seconds to wait for each status response.                       |
+| `--connect-timeout`         |   `120` | Maximum seconds to wait for all initial client attempts to finish.      |
 
 `clients`, `ramp-rate`, and `soak-seconds` must be positive integers. Request, broadcast, and response-timeout values must be positive. The load harness does not add load to the production package or modify application configuration.
 

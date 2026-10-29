@@ -1,6 +1,6 @@
-# WebSocket Protocol Reference
+# SocketCore WebSocket Protocol Reference
 
-This document describes the JSON message contract implemented by the standalone app and the extension points available to library consumers. Wire fields and error codes are stable application behavior; the engine does not negotiate a protocol version.
+**A reusable WebSocket core for real-time Node.js applications.** This document describes SocketCore's JSON message contract in the standalone app and its handler extension points. Wire fields and error codes are stable application behavior; the engine does not negotiate a protocol version.
 
 ## Upgrade and Connection
 

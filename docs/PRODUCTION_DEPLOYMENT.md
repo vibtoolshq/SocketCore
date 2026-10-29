@@ -1,6 +1,6 @@
-# Production Deployment Boundaries
+# SocketCore Production Deployment Boundaries
 
-This guide is an operator checklist for embedding or deploying the WebSocket engine. It does not certify the package for a particular workload. The repository has local loopback measurements, but no production workload, host, network path, or SLO has been specified.
+**A reusable WebSocket core for real-time Node.js applications.** This guide is an operator checklist for embedding or deploying SocketCore. It does not certify the package for a particular workload. The repository has local loopback measurements, but no production workload, host, network path, or SLO has been specified.
 
 ## Responsibilities
 

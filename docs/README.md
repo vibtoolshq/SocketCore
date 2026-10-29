@@ -1,6 +1,10 @@
-# User Documentation
+# SocketCore Documentation
 
-This tracked directory contains verified setup and usage instructions for the current WebSocket engine. It describes the behavior implemented in the repository; it does not promise functionality that is absent from the source.
+**A reusable WebSocket core for real-time Node.js applications.**
+
+SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging, connection limits, backpressure, metrics hooks, and graceful shutdown. This tracked directory contains verified setup, protocol, API, deployment, and load-study references. Documentation describes implemented behavior and labels deployment capabilities that remain the host application's responsibility.
+
+The root [README](../README.md) is the GitHub project overview. The [project records](../project/README.md) describe engineering history and source ownership.
 
 ## Guides
 
