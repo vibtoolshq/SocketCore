@@ -12,7 +12,7 @@ The embedding application or deployment must provide TLS termination, secret sto
 
 - Terminate TLS at a trusted load balancer/reverse proxy or attach the engine to an HTTPS server created by the embedding application. `engine.attach(server)` listens for HTTP `upgrade` events; it does not create a listener or configure TLS.
 - If a proxy is used, configure and validate its WebSocket upgrade forwarding, idle timeouts, connection limits, and health/drain behavior in that proxy. This repository does not include proxy configuration or test a proxy path.
-- The engine does not inspect forwarded headers, infer trusted client IPs, enforce URL paths, or negotiate subprotocols. Do not treat arbitrary forwarded headers as verified client identity.
+- The engine does not inspect forwarded headers, infer trusted client IPs, or negotiate subprotocols. The standalone app does not enforce a URL path; library consumers may set the optional `path` factory option to filter upgrades, while the host application owns unmatched-upgrade behavior. Do not treat arbitrary forwarded headers as verified client identity.
 - The standalone app accepts upgrade requests without checking their URL path. If an application needs path isolation, implement it in the server/proxy integration and test rejected paths explicitly.
 
 ## Authentication and Origin Policy
@@ -27,7 +27,7 @@ The embedding application or deployment must provide TLS termination, secret sto
 
 Set finite limits based on measured application traffic, including connection count, simultaneous handshakes, payload size, per-client message rate, handler concurrency, fanout, and slow-client behavior. The defaults are guardrails, not capacity promises.
 
-`maxGlobalMessagesPerSecond` and `maxTotalBufferedBytes` default to `Infinity` in the library and are disabled unless configured. Choose finite values for a real deployment only after sizing expected traffic and testing overload behavior. The standalone environment parser accepts positive integers; it does not accept the string `Infinity`.
+`maxGlobalMessagesPerSecond` and `maxTotalBufferedBytes` have active library defaults of 500 messages/second and 64 MiB. These are configurable guardrails, not deployment-specific capacity guarantees. Size and load-test them against the real workload; the library accepts explicit `Infinity` as an opt-out, while the standalone environment parser accepts positive integers only.
 
 The local 1,000- and 2,000-client loopback results in [LOAD_TESTING.md](LOAD_TESTING.md) use small synthetic status messages on one Windows host. They are not a supported-N guarantee and do not predict performance on another host, proxy, TLS path, payload, fanout, or client traffic pattern.
 

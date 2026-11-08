@@ -61,7 +61,8 @@ function createConnectionManager(options = {}) {
   let totalBufferedBytes = 0;
 
   function add(clientId, ws, identity = {}) {
-    if (clients.size >= limits.maxConnections) return null;
+    if (clients.has(clientId) || clients.size >= limits.maxConnections)
+      return null;
     const client = {
       id: clientId,
       ws,

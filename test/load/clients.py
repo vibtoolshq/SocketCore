@@ -158,6 +158,7 @@ async def run_load(args: argparse.Namespace) -> dict[str, Any]:
                                     "data": {
                                         "request": "load",
                                         "sequence": sequence,
+                                        "payload": "x" * args.payload_bytes,
                                     },
                                 },
                                 separators=(",", ":"),
@@ -218,6 +219,7 @@ async def run_load(args: argparse.Namespace) -> dict[str, Any]:
                                 "data": {
                                     "broadcast": True,
                                     "sequence": sequence,
+                                    "payload": "x" * args.payload_bytes,
                                 },
                             },
                             separators=(",", ":"),
@@ -372,6 +374,7 @@ async def run_load(args: argparse.Namespace) -> dict[str, Any]:
             "soak_seconds": args.soak_seconds,
             "request_interval_seconds": args.request_interval,
             "broadcast_interval_seconds": args.broadcast_interval,
+            "payload_padding_bytes": args.payload_bytes,
             "reconnect_burst_clients_per_wave": args.reconnect_burst_clients,
             "reconnect_burst_waves": 2,
             "elapsed_seconds": round(loop.time() - start_time, 2),
@@ -432,6 +435,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ramp-rate", type=int, default=20)
     parser.add_argument("--soak-seconds", type=int, default=60)
     parser.add_argument("--request-interval", type=float, default=10)
+    parser.add_argument("--payload-bytes", type=int, default=1024)
     parser.add_argument("--broadcast-interval", type=float, default=10)
     parser.add_argument("--broadcast-grace", type=float, default=3)
     parser.add_argument("--reconnect-burst-clients", type=int, default=500)
@@ -442,6 +446,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("clients, ramp-rate, and soak-seconds must be positive")
     if min(args.request_interval, args.broadcast_interval, args.response_timeout) <= 0:
         parser.error("intervals and response timeout must be positive")
+    if args.payload_bytes < 1:
+        parser.error("payload-bytes must be positive")
     return args
 
 

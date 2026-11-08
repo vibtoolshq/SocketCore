@@ -22,7 +22,7 @@ The harness creates temporary non-secret client/admin tokens and binds the test 
 
 ## Workload and Provisional Targets
 
-Defaults ramp to 1,000 authenticated clients at up to 20 connection attempts per second, then hold for 60 seconds. Each client sends a small status echo request every 10 seconds (about 100 request/response messages per second at full load); one admin sends status broadcasts every 10 seconds (about six broadcasts/6,000 client deliveries over a full 60-second soak). To run the higher measured point, use:
+Defaults ramp to 1,000 authenticated clients at up to 20 connection attempts per second, then hold for 60 seconds. Each client sends a status echo request every 10 seconds with a 1,024-byte application payload field by default; one admin sends matching broadcasts every 10 seconds. The JSON/WebSocket envelope adds extra bytes beyond the configured field. To run the higher measured point, use:
 
 ```powershell
 $env:PYTHONPATH = Join-Path $env:TEMP "websocket-load-packages"
@@ -33,19 +33,20 @@ The 2,000-client run performs two concurrent 500-client reconnect waves after th
 
 ### Workload Options
 
-| Option                      | Default | Meaning                                                                 |
-| --------------------------- | ------: | ----------------------------------------------------------------------- |
-| `--clients`                 |  `1000` | Number of steady-state authenticated clients.                           |
-| `--ramp-rate`               |    `20` | Number of clients scheduled per one-second ramp step.                   |
-| `--soak-seconds`            |    `60` | Duration of steady-state traffic after connection attempts finish.      |
-| `--request-interval`        |    `10` | Seconds between each client's status requests.                          |
-| `--broadcast-interval`      |    `10` | Seconds between admin status broadcasts.                                |
-| `--broadcast-grace`         |     `3` | Seconds allowed for in-flight broadcast deliveries after sending stops. |
-| `--reconnect-burst-clients` |   `500` | Simultaneous client connection attempts in each of two reconnect waves. |
-| `--response-timeout`        |    `10` | Maximum seconds to wait for each status response.                       |
-| `--connect-timeout`         |   `120` | Maximum seconds to wait for all initial client attempts to finish.      |
+| Option                      | Default | Meaning                                                                       |
+| --------------------------- | ------: | ----------------------------------------------------------------------------- |
+| `--clients`                 |  `1000` | Number of steady-state authenticated clients.                                 |
+| `--ramp-rate`               |    `20` | Number of clients scheduled per one-second ramp step.                         |
+| `--soak-seconds`            |    `60` | Duration of steady-state traffic after connection attempts finish.            |
+| `--request-interval`        |    `10` | Seconds between each client's status requests.                                |
+| `--payload-bytes`           |  `1024` | Padding bytes in each status request and admin broadcast application payload. |
+| `--broadcast-interval`      |    `10` | Seconds between admin status broadcasts.                                      |
+| `--broadcast-grace`         |     `3` | Seconds allowed for in-flight broadcast deliveries after sending stops.       |
+| `--reconnect-burst-clients` |   `500` | Simultaneous client connection attempts in each of two reconnect waves.       |
+| `--response-timeout`        |    `10` | Maximum seconds to wait for each status response.                             |
+| `--connect-timeout`         |   `120` | Maximum seconds to wait for all initial client attempts to finish.            |
 
-`clients`, `ramp-rate`, and `soak-seconds` must be positive integers. Request, broadcast, and response-timeout values must be positive. The load harness does not add load to the production package or modify application configuration.
+`clients`, `ramp-rate`, `soak-seconds`, and `payload-bytes` must be positive integers. Request, broadcast, and response-timeout values must be positive. The load harness does not add load to the production package or modify application configuration.
 
 These are provisional local-study targets, not user-approved production SLOs:
 
@@ -63,9 +64,28 @@ Change CLI options for smaller staged trials. Do not claim production readiness 
 |   1,000 |   5,999/5,999 |        5,000/5,000 |  3.567 / 48.384 ms |  75.65 MiB | Not part of first profile          |
 |   2,000 | 12,001/12,001 |      10,000/10,000 | 7.584 / 178.432 ms | 108.29 MiB | 500/500 twice; 1.160 s and 1.441 s |
 
-The final 2,000-client profile also measured peak heap 34.24 MiB, peak one-core CPU 61.65%, maximum sampled event-loop lag mean 40.967 ms, and peak buffered bytes 0. It completed with 3,001 accepted/closed connections (clients, admin, and reconnects), no server error logs or request timeouts, and final active/buffered gauges both zero. The 1k and 2k runs used Windows Server 2022, Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, 7.8 GiB installed RAM, and loopback networking.
+The final 2,000-client profile also measured peak heap 34.24 MiB, peak one-core CPU 61.65%, maximum sampled event-loop lag mean 40.967 ms, and peak buffered bytes 0. It completed with 3,001 accepted/closed connections (clients, admin, and reconnects), no server error logs or request timeouts, and final active/buffered gauges both zero. These 2026-10-28 results predate the configurable 1KiB payload field and used smaller status messages. The 1k and 2k runs used Windows Server 2022, Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, 7.8 GiB installed RAM, and loopback networking.
 
 These are exploratory results against a synthetic local workload, not production SLOs or a supported concurrency guarantee. Actual application payload sizes/rates, deployment host, network path, TLS/proxy behavior, and resource budgets remain unknown.
+
+## Phase 8 Provisional 100-Client Trial (2026-10-31)
+
+The user-approved exploratory profile used 100 steady clients plus one admin, 1,024-byte payload fields, status requests every 10 seconds, admin broadcasts every 10 seconds, a 20-client/second ramp, a 60-second soak, and two 25-client reconnect waves.
+
+| Result                                          |                          Measurement |
+| ----------------------------------------------- | -----------------------------------: |
+| Connected clients                               |                            100 / 100 |
+| Status requests/responses                       |                     601 / 601 (100%) |
+| Broadcast deliveries                            | 500 / 500 (100%) across 5 broadcasts |
+| p50 / p95 / p99 / max latency                   |  1.236 / 2.842 / 42.927 / 313.566 ms |
+| Peak RSS / heap                                 |                     52.64 / 9.43 MiB |
+| Peak sampled one-core CPU                       |                              127.87% |
+| Maximum sampled event-loop-lag mean             |                            38.322 ms |
+| Reconnect waves                                 |    25 / 25 each; 0.063 s and 0.059 s |
+| Client/admin/server errors and request timeouts |                                    0 |
+| Final active connections / buffered bytes       |                                0 / 0 |
+
+Environment: local loopback, Windows Server 2022, Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, 8.39 GB installed RAM. The load server used the default-on 500 messages/second and 64 MiB pending-send caps. The profile passed its provisional delivery/latency targets, but the peak CPU sample demonstrates the system did consume server resources; zero server load is not possible. This host is not the user's 4 GiB VPS, and CPU/OS/TLS-proxy topology and production SLOs are unknown. This result is exploratory evidence only, not production qualification.
 
 ## Output
 

@@ -3,12 +3,13 @@ const DEFAULT_LIMITS = Object.freeze({
   maxPendingUpgrades: 256,
   maxMessagesPerSecond: 100,
   maxConcurrentMessagesPerClient: 32,
+  maxGlobalConcurrentMessages: 1024,
   maxPayloadBytes: 64 * 1024,
   maxBufferedBytes: 1024 * 1024,
   maxSubscriptionsPerClient: 100,
   maxGroupNameLength: 128,
-  maxGlobalMessagesPerSecond: Infinity,
-  maxTotalBufferedBytes: Infinity,
+  maxGlobalMessagesPerSecond: 500,
+  maxTotalBufferedBytes: 64 * 1024 * 1024,
 });
 
 const DEFAULT_HEARTBEAT = Object.freeze({

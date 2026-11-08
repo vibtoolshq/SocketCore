@@ -75,9 +75,9 @@ Custom handlers receive `ctx` containing `clientId`, `identity`, `meta` (the sam
 ## Limits, Timeouts and Shutdown
 
 - Per-client message-rate violation closes with 1008; per-client concurrent-message violation closes with 1013.
-- Optional engine-wide message-rate cap defaults disabled (`Infinity`); when set, excess closes the sending client with 1008.
+- Engine-wide message-rate cap defaults to 500 messages/second; excess closes the sending client with 1008. Library consumers can override it or explicitly set `Infinity`.
 - Inbound payload limit is enforced by `ws`; the integration test expects close 1009 for an oversized frame.
-- Per-client output-buffer excess closes slow client with 1013. Optional aggregate output-buffer excess rejects only the current send; it does not disconnect the target.
+- Per-client output-buffer excess closes a slow client with 1013. Aggregate pending-send cap defaults to 64 MiB; excess rejects only the current send and does not disconnect the target. Library consumers can override it or explicitly set `Infinity`.
 - Origin/auth callbacks have configured deadlines. Timeout returns HTTP 503 and releases the pending-upgrade slot. The underlying callback promise cannot be forcibly cancelled by JavaScript and may continue its own work.
 - Shutdown closes clients with 1001, waits for close events up to the configured drain timeout, then terminates remaining sockets before completing `engine.stop()`.
 

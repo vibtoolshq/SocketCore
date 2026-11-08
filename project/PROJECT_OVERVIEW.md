@@ -4,7 +4,7 @@
 
 ## Verified Snapshot
 
-This document describes SocketCore after Phase 4 on 2026-10-28. SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging. The package metadata name is `configurable-websocket-engine`, version `1.0.0`, CommonJS, Node.js `>=20`, with `ws` `^8.18.3`. Package root export is `createEngine`; the standalone app is `app.js`.
+This document describes SocketCore after remediation Phases 5-7 and the provisional Phase 8 guardrail/load trial on 2026-10-31. Phase 8 production/VPS qualification remains blocked pending target workload, deployment, resource-budget, and SLO inputs. SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging. The package metadata name is `configurable-websocket-engine`, version `1.0.0`, CommonJS, Node.js `>=20`, with `ws` `^8.18.3`. Package root export is `createEngine`; the standalone app is `app.js`.
 
 ## Project Identity
 
@@ -15,36 +15,42 @@ This document describes SocketCore after Phase 4 on 2026-10-28. SocketCore is a 
 - **Organization:** Vib Tools; no unverified executive or legal title is implied.
 - **License:** No `LICENSE` file is present; reuse terms are unspecified.
 
-This is a WebSocket transport engine and sample server, not a web page or REST API. No app-specific HTTP route, frontend page, or upgrade path check exists.
+This is a WebSocket transport engine and sample server, not a web page or REST API. No app-specific HTTP route or frontend page exists. Library consumers can optionally set an exact WebSocket upgrade pathname; the standalone app leaves path matching unrestricted.
 
 ## Source Inventory
 
-| Path                           | Responsibility                                                                                             |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `app.js`                       | Environment configuration, sample auth/origin/handlers, server lifecycle and signal shutdown.              |
-| `engine/config.js`             | Shared port/limit/heartbeat/timeout defaults and option validation.                                        |
-| `engine/observability.js`      | Internal metrics wrapper and safe logger helpers.                                                          |
-| `engine/index.js`              | Public `createEngine` factory, bounded handshake callbacks, upgrade/message admission, metrics, lifecycle. |
-| `engine/connection-manager.js` | In-memory clients/groups, sends, authorization, aggregate/per-client buffering, heartbeat and drain.       |
-| `engine/message-router.js`     | JSON decoding, type dispatch, protocol errors, handler failure metric/log.                                 |
-| `handlers/command.handler.js`  | Sample ping/echo/admin broadcast/client shutdown commands.                                                 |
-| `handlers/status.handler.js`   | Sample status acknowledgement, admin snapshot and broadcast.                                               |
-| `load-test/server.js`          | Test-only loopback server composing the engine and sample handlers for scale measurements.                 |
-| `test/engine.test.js`          | Integration coverage for handshake, auth, groups, limits and cleanup.                                      |
-| `test/phase1.test.js`          | Phase 1 config, subscription-authorization, and broadcast regression tests.                                |
-| `test/phase2.test.js`          | Phase 2 timeout, drain, aggregate cap, send failure, metrics, and redaction tests.                         |
-| `test/phase3.test.js`          | Proves two application configurations compose through public engine APIs without core specialization.      |
-| `test/load/clients.py`         | Async Python workload, response/fanout/reconnect checks, latency and resource report.                      |
-| `test/requirements-load.txt`   | Pinned test-only Python WebSocket client dependency.                                                       |
-| `package.json`                 | Package metadata, exports, scripts, Node floor, dependency.                                                |
+| Path                           | Responsibility                                                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.js`                       | Environment configuration, sample auth/origin/handlers, server lifecycle and signal shutdown.                                               |
+| `engine/config.js`             | Shared port/limit/heartbeat/timeout defaults, including the global handler-work cap, and option validation.                                 |
+| `engine/observability.js`      | Internal metrics wrapper and safe logger helpers.                                                                                           |
+| `engine/index.js`              | Public `createEngine` factory, bounded/cancellable callbacks and handlers, optional path filter, global work admission, metrics, lifecycle. |
+| `engine/connection-manager.js` | In-memory clients/groups, sends, authorization, aggregate/per-client buffering, heartbeat and drain.                                        |
+| `engine/message-router.js`     | JSON decoding, type dispatch, protocol errors, handler failure metric/log.                                                                  |
+| `handlers/command.handler.js`  | Sample ping/echo/admin broadcast/client shutdown commands.                                                                                  |
+| `handlers/status.handler.js`   | Sample status acknowledgement, admin snapshot and broadcast.                                                                                |
+| `load-test/server.js`          | Test-only loopback server composing the engine and sample handlers for scale measurements.                                                  |
+| `test/engine.test.js`          | Integration coverage for handshake, auth, groups, limits and cleanup.                                                                       |
+| `test/phase1.test.js`          | Phase 1 config, subscription-authorization, and broadcast regression tests.                                                                 |
+| `test/phase2.test.js`          | Timeout cancellation/accounting, drain, aggregate cap, send failure, metrics, and redaction tests.                                          |
+| `test/phase3.test.js`          | Proves two application configurations compose through public engine APIs without core specialization.                                       |
+| `test/phase5.test.js`          | Covers duplicate client IDs, invalid upgrade paths, and shared-server route isolation.                                                      |
+| `test/phase7.test.js`          | Covers handler-signal cancellation and bounded global in-flight work.                                                                       |
+| `test/load/clients.py`         | Async Python workload, response/fanout/reconnect checks, latency and resource report.                                                       |
+| `test/requirements-load.txt`   | Pinned test-only Python WebSocket client dependency.                                                                                        |
+| `package.json`                 | Package metadata, exports, scripts, Node floor, dependency.                                                                                 |
 
-## Implemented Phase 1-4 Behavior
+## Implemented Behavior
 
 - Phase 1 centralized finite defaults and validation, enforced subscription authorization through both context and manager APIs, and fixed broadcast delivery count.
 - Phase 2 added bounded origin/auth callbacks, pending-slot release on timeout, graceful async drain, optional global limits, injectable metrics, safe logging, and send-failure cleanup.
 - Phase 3 verified that independent applications can configure auth headers, origins, identities, handlers and metrics through the same public `createEngine`/`register` APIs. Sample handlers remain outside transport core; `app.js` composes them.
 - Phase 4 adds a repeatable Python-client loopback profile and a close-event metric. The final 1k and 2k local profiles passed their provisional thresholds, including the 2k reconnect waves; the helper server is outside Node's automatic test discovery.
 - `npm test` passed 12 tests, 0 failures after Phase 4.
+- Remediation Phase 5 rejects duplicate manager client IDs without mutating existing ownership and adds optional exact-path upgrade filtering for shared-server integrations. Three focused Phase 5 tests and the full 15-test suite pass.
+- Remediation Phase 6 passes cooperative `AbortSignal`s to origin/auth callbacks, aborts them on timeout or engine stop, and retains the `maxPendingUpgrades` work slot until a timed-out provider settles. Existing 503 behavior is preserved; callback lifecycle tests and final suite results are recorded in the phase log.
+- Remediation Phase 7 exposes a per-connection `ctx.signal`, aborts it on disconnect/error/engine stop, and bounds concurrent handler work across the engine with `limits.maxGlobalConcurrentMessages` (default 1024). Saturation closes only the submitting client with 1013; work remains counted until its promise settles. Focused tests pass 3/3; the full suite passes 20/20.
+- Phase 8 enabled default-on aggregate guardrails of 500 inbound messages/second and 64 MiB pending sends, with per-engine overrides. A provisional 100-client/1KiB local loopback profile passed its delivery/latency targets; its 127.87% peak one-core CPU sample and non-target host mean it does not qualify the 4GB VPS.
 
 ## Phase 4 Local Scale Study
 
@@ -56,6 +62,6 @@ These are synthetic loopback results against provisional thresholds, not a produ
 
 The public root package export is `createEngine`; config/observability modules are internal. Supported extension callbacks include authentication, subscription authorization, logger and metrics. No external consumer requirements were supplied, so Phase 3 adds no store/pubsub/codec adapter or backend.
 
-Per-IP/tenant limits remain deferred until a trusted proxy and tenant-identity contract are specified. The repository has no metrics backend, persistent store, or production-qualified concurrency number. Optional aggregate limits being disabled by default is not capacity evidence. The local load harness does not test TLS, reverse proxies, remote hosts, or a consuming application's actual traffic profile. No UI exists.
+Per-IP/tenant limits remain deferred until a trusted proxy and tenant-identity contract are specified. The repository has no metrics backend, persistent store, or production-qualified concurrency number. Active aggregate defaults are guardrails, not capacity evidence. The local load harness does not test TLS, reverse proxies, remote hosts, or a consuming application's actual traffic profile. No license persistence/suspension/logout workflow or UI is implemented by this transport engine.
 
 User setup, protocol, API, load-testing, and deployment guides are indexed in [../docs/README.md](../docs/README.md). Private phase scope and readiness decisions are in `../notes/PRODUCTION_READINESS_ROADMAP.md`.

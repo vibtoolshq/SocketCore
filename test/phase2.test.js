@@ -6,6 +6,7 @@ const WebSocket = require("ws");
 const {
   DEFAULT_LIMITS,
   DEFAULT_TIMEOUTS,
+  resolveLimits,
   resolveTimeouts,
 } = require("../engine/config");
 const { createConnectionManager } = require("../engine/connection-manager");
@@ -45,9 +46,9 @@ class FakeSocket extends EventEmitter {
   ping() {}
 }
 
-function connectOrReject(url) {
+function connectOrReject(url, options = {}) {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(url);
+    const socket = new WebSocket(url, options);
     socket.once("open", () => resolve({ socket, status: 101 }));
     socket.once("unexpected-response", (_request, response) => {
       const status = response.statusCode;
@@ -73,12 +74,21 @@ function receiveType(socket, expectedType) {
   });
 }
 
-test("Phase 2 timeout defaults are finite and optional aggregate limits are disabled", () => {
+test("shared limits are finite by default and aggregate limits can be overridden", () => {
   assert.equal(DEFAULT_TIMEOUTS.originCheckMs, 5000);
   assert.equal(DEFAULT_TIMEOUTS.authenticateMs, 5000);
   assert.equal(DEFAULT_TIMEOUTS.shutdownDrainMs, 10000);
-  assert.equal(DEFAULT_LIMITS.maxGlobalMessagesPerSecond, Infinity);
-  assert.equal(DEFAULT_LIMITS.maxTotalBufferedBytes, Infinity);
+  assert.equal(DEFAULT_LIMITS.maxGlobalMessagesPerSecond, 500);
+  assert.equal(DEFAULT_LIMITS.maxTotalBufferedBytes, 64 * 1024 * 1024);
+  assert.equal(
+    resolveLimits({ maxGlobalMessagesPerSecond: Infinity })
+      .maxGlobalMessagesPerSecond,
+    Infinity,
+  );
+  assert.equal(
+    resolveLimits({ maxTotalBufferedBytes: Infinity }).maxTotalBufferedBytes,
+    Infinity,
+  );
   assert.deepEqual(resolveTimeouts(), DEFAULT_TIMEOUTS);
   assert.throws(
     () => resolveTimeouts({ authenticateMs: 0 }),
@@ -91,17 +101,21 @@ test("Phase 2 timeout defaults are finite and optional aggregate limits are disa
 });
 
 test(
-  "authentication timeout releases the pending-upgrade slot",
+  "authentication timeout aborts its signal and bounds non-cooperative work",
   { timeout: 5000 },
   async (t) => {
     let authenticationCalls = 0;
+    let authenticationSignal;
+    let settleTimedOutWork;
     const server = createServer();
     const engine = createEngine({
-      authenticate: () => {
+      authenticate: (_req, { signal }) => {
         authenticationCalls++;
-        return authenticationCalls === 1
-          ? new Promise(() => {})
-          : { role: "client" };
+        if (authenticationCalls > 1) return { role: "client" };
+        authenticationSignal = signal;
+        return new Promise((resolve) => {
+          settleTimedOutWork = resolve;
+        });
       },
       limits: { maxPendingUpgrades: 1, maxConnections: 2 },
       timeouts: { authenticateMs: 40 },
@@ -120,11 +134,98 @@ test(
     const url = `ws://127.0.0.1:${server.address().port}`;
     const timedOut = await connectOrReject(url);
     assert.equal(timedOut.status, 503);
+    assert.equal(authenticationSignal.aborted, true);
+
+    const rejectedWhileWorkRuns = await connectOrReject(url);
+    assert.equal(rejectedWhileWorkRuns.status, 503);
+    assert.equal(authenticationCalls, 1);
+
+    settleTimedOutWork({ role: "client" });
+    await new Promise((resolve) => setImmediate(resolve));
 
     const accepted = await connectOrReject(url);
     assert.equal(accepted.status, 101);
+    accepted.socket.terminate();
   },
 );
+
+test("origin timeout aborts the provider signal and preserves HTTP 503", async (t) => {
+  let originSignal;
+  let authenticationCalls = 0;
+  const server = createServer();
+  const engine = createEngine({
+    authenticate: () => {
+      authenticationCalls++;
+      return { role: "client" };
+    },
+    allowedOrigins: (_origin, _req, { signal }) => {
+      originSignal = signal;
+      return new Promise(() => {});
+    },
+    limits: { maxPendingUpgrades: 1 },
+    timeouts: { originCheckMs: 30 },
+    heartbeat: { heartbeatIntervalMs: 0, staleThresholdMs: 0 },
+    logger: { warn() {}, error() {} },
+  });
+  engine.attach(server);
+
+  t.after(async () => {
+    await engine.stop();
+    if (server.listening) await new Promise((resolve) => server.close(resolve));
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const url = `ws://127.0.0.1:${server.address().port}`;
+  const result = await connectOrReject(url, {
+    headers: { Origin: "https://slow.example" },
+  });
+
+  assert.equal(result.status, 503);
+  assert.equal(originSignal.aborted, true);
+  assert.equal(authenticationCalls, 0);
+});
+
+test("engine stop aborts active authentication and rejects its upgrade with 503", async (t) => {
+  let authenticationSignal;
+  let notifyAuthenticationStarted;
+  const authenticationStarted = new Promise((resolve) => {
+    notifyAuthenticationStarted = resolve;
+  });
+  const server = createServer();
+  const engine = createEngine({
+    authenticate: (_req, { signal }) => {
+      authenticationSignal = signal;
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener(
+          "abort",
+          () => reject(new Error("authentication aborted")),
+          { once: true },
+        );
+        notifyAuthenticationStarted();
+      });
+    },
+    timeouts: { authenticateMs: 1000 },
+    heartbeat: { heartbeatIntervalMs: 0, staleThresholdMs: 0 },
+    logger: { warn() {}, error() {} },
+  });
+  engine.attach(server);
+
+  t.after(async () => {
+    await engine.stop();
+    if (server.listening) await new Promise((resolve) => server.close(resolve));
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const url = `ws://127.0.0.1:${server.address().port}`;
+  const upgrade = connectOrReject(url);
+  await authenticationStarted;
+
+  const stopping = engine.stop();
+  assert.equal(authenticationSignal.aborted, true);
+  const result = await upgrade;
+  await stopping;
+  assert.equal(result.status, 503);
+});
 
 test("aggregate buffered cap drops without evicting a client and reclaims bytes", () => {
   const metrics = [];

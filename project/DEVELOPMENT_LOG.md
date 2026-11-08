@@ -74,7 +74,7 @@
 - Added callback deadlines, bounded drain, optional aggregate message/buffer limits, safe metrics hooks, sanitized error logging, and send-failure accounting.
 - `npm test` passed 11 tests, 0 failures.
 - Updated configuration/API/protocol/user guides and project feature inventory. No unrelated UI/business feature changes were made.
-- Per-IP/tenant protection remains deferred pending trusted-source assumptions; aggregate limits are optional and disabled by default; no supported concurrency claim is made.
+- At Phase 2 completion, per-IP/tenant protection remained deferred pending trusted-source assumptions and aggregate limits were disabled by default. Phase 8 later enabled configurable aggregate guardrails; no supported concurrency claim is made.
 
 ## 2026-10-28 - README Visual Redesign - Complete
 
@@ -82,3 +82,56 @@
 - Added original `assets/socketcore-message-flow.gif` (960x380, 12 distinct frames, 140 ms per frame, looping) and its reproducible Pillow-based generator `assets/generate_message_flow.py`.
 - Preserved verified package identity, protocol examples, configuration defaults, license status, author attribution, and the provisional-only load-study caveat. No CSS/JavaScript animation or copied artwork is used.
 - Verification: GIF dimensions/frame count/duration/loop checked; README local links resolve; `npm test` passed 12 tests, 0 failures.
+
+## 2026-10-31 - Remediation Phase 5: Registry Integrity and Upgrade Routing - Complete
+
+- Rejected duplicate `connectionManager.add(clientId, ...)` calls with the existing `null` failure result before registry mutation; existing client and group ownership remain intact.
+- Added optional library-level `path` pathname filtering. Missing `path` preserves existing behavior; nonmatching requests are left to other upgrade listeners, and the host owns final unmatched-upgrade handling.
+- Added focused regression tests for duplicate-ID preservation, invalid path configuration, and two differently routed engines attached to one HTTP server.
+- Updated the engine API/configuration guides and project overview. No standalone app environment variable, protocol, UI, authentication, or unrelated feature changed.
+- Verification: focused Phase 5 tests passed 3/3; `npm test` passed 15/15.
+
+## 2026-10-31 - Remediation Phase 6: Upgrade Callback Lifecycle - Complete
+
+- Extended async authentication and function-valued origin callbacks with trailing `AbortSignal` options while preserving compatibility with callbacks that ignore extra arguments.
+- Callback timeout aborts its signal and preserves HTTP 503. Engine stop aborts active callbacks and preserves the 503 stopping response.
+- Retained each upgrade's `maxPendingUpgrades` work slot until the underlying callback promise settles, including after timeout; a non-cooperative provider therefore cannot cause unbounded concurrent callback work.
+- Added tests for authentication timeout signal/accounting/recovery, origin timeout abort, and engine-stop cancellation/status.
+- Updated API/config guides, project overview, and private phase/status/error records. No app environment settings, auth providers, message protocol, handler lifecycle, UI, or unrelated features changed.
+- Verification: focused `test/phase2.test.js` passed 9/9; full-suite results are recorded in the private phase completion log.
+
+## 2026-10-31 - Remediation Phase 7: Message Handler Lifecycle - Complete
+
+- Added `limits.maxGlobalConcurrentMessages` with a finite default of 1,024 and library override support. It is not exposed as a new standalone environment variable.
+- Added per-connection `ctx.signal`, aborted on WebSocket close/error and when `engine.stop()` starts. Existing `(ctx, message)` handler and wire protocol remain unchanged.
+- When the engine-wide in-flight budget is full, the submitting client is closed with 1013 and a low-cardinality drop metric is emitted. The global work slot remains reserved until the underlying dispatch promise settles, even after disconnect/abort.
+- Added focused tests for limit validation, disconnect/reconnect work accounting and recovery, and shutdown cancellation.
+- Updated API/config/user guides, project overview, and private phase/status/error records. No app environment settings, auth behavior, protocol, UI, or unrelated features changed.
+- Verification: focused tests passed 3/3; full-suite results are recorded in the private phase completion log.
+
+## 2026-10-31 - Phase 8: Default-On Guardrails and Provisional Local Trial - Partial
+
+- Enabled shared aggregate defaults: 500 inbound messages/second and 64 MiB total pending-send bytes. Each remains configurable per engine; library consumers can explicitly use `Infinity` to opt out.
+- Added `--payload-bytes` to the existing test-only load harness, defaulting to a 1,024-byte application field in status requests/broadcasts and included in the JSON report.
+- Ran the accepted provisional profile: 100 clients, 1 admin, 10-second client/admin intervals, 20 connects/second ramp, 60-second soak, and two 25-client reconnect waves.
+- Result: 601/601 responses, 500/500 broadcasts, p95/p99 2.842/42.927 ms, 0 errors/timeouts, reconnect 25/25 twice; peak RSS/heap 52.64/9.43 MiB, peak sampled one-core CPU 127.87%, maximum sampled event-loop-lag mean 38.322 ms.
+- Environment: local loopback, Windows Server 2022, Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, 8.39 GB installed RAM. Not the target 4GB VPS; the nonzero CPU sample confirms load is not zero.
+- Verification: `npm test` passed 20/20; load harness syntax, CLI help, and provisional 100-client profile passed.
+- No license-specific storage/workflows, UI, auth flow, message protocol, app environment settings, dependency, or deployment behavior changed.
+
+## 2026-11-08 - Forensic Continuation and Status Reconciliation
+
+- Compared the supplied closed-session transcript with current engine defaults, callback/handler safeguards, focused tests, load-test evidence, project records, and user-facing configuration/load guides.
+- Confirmed Phases 5-7 are recorded complete; Phase 8 default-on guardrails and the provisional local profile are recorded complete, while production/VPS qualification remains blocked pending target workload, deployment/runtime/TLS-proxy topology, resource budget, and SLO.
+- Corrected the project overview snapshot statement to include the Phase 8 provisional work and its blocked production qualification.
+- The user confirmed retaining finite safety defaults and requested no new implementation when approved updates are complete. No runtime source, tests, protocol, UI, or deployment behavior changed.
+- Verification limitation: this audit's test runner found no tests for the supplied Windows absolute paths; the prior 20/20 result remains the historical Phase 8 record and was not freshly reproduced.
+- Production qualification remains blocked pending target VPS CPU/OS/Node/TLS-proxy topology, resource budget, representative production event/payload/fanout/churn, and production SLOs.
+
+## 2026-11-08 - Production Readiness Audit
+
+- Audited current engine modules, standalone composition, handlers, package metadata, tests, load-test guide/evidence, and project/deployment documentation.
+- Fresh `npm test` run passed 20/20 tests, 0 failures, in approximately 0.99 seconds. This validates the current worktree's regression tests only; it is not a production load or deployment qualification.
+- Corrected `docs/PRODUCTION_DEPLOYMENT.md` to distinguish the standalone app's unrestricted path behavior from the library's optional `path` filter.
+- Readiness conclusion: the engine is usable as a transport component after per-app security/configuration and target-environment validation; this repository/sample deployment is not certified production-ready. No production workload/SLO, TLS/proxy run, target-host test, dependency/security scan, or cross-version Node matrix was established in this audit.
+- No runtime, protocol, UI, application-business, or deployment behavior changed.

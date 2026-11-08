@@ -103,43 +103,47 @@ flowchart LR
 
 ## Feature Map
 
-| Capability | What it does | How to use it |
-| --- | --- | --- |
-| Authentication and Origin | Requires an application auth callback; optionally allows exact origins or an origin callback. Missing Origin is allowed. | Configure `authenticate` and `allowedOrigins` in `createEngine`; sample app uses `AUTH_TOKENS` and `ALLOWED_ORIGINS`. |
-| Typed JSON routing | Decodes JSON, routes by string `type`, and reports malformed or unknown messages. | Register an async handler with `engine.register(type, handler)`. |
-| Connection lifecycle | Tracks identity, client IDs, groups, sends, heartbeat state, and shutdown. | Use `connectionManager` or handler context methods. |
-| Subscriptions | Authorizes group joins through the same callback for context and direct manager calls; default is deny. | Supply `authorizeSubscription`; await `ctx.subscribe(group)`. |
-| Admission and message limits | Bounds connections, pending upgrades, frame size, per-client rate, and in-flight work. | Configure `limits`; see [all environment options](docs/CONFIGURATION.md). |
-| Backpressure | Closes slow clients above per-client buffering limit; optional aggregate pending-send cap rejects a send without disconnecting the target. | Configure `maxBufferedBytes` and, after workload sizing, `maxTotalBufferedBytes`. |
-| Heartbeat | Pings clients and terminates stale connections based on pong age. | Configure `heartbeatIntervalMs` and `staleThresholdMs`; zero interval disables the timer. |
-| Callback deadlines | Bounds Origin and authentication callback wait time and releases pending-upgrade capacity on timeout. | Configure `originCheckMs` and `authenticateMs`; callback Promise work itself cannot be forcibly cancelled. |
-| Graceful drain | Stops upgrade admission, closes clients, waits for close events, then terminates remaining sockets after the deadline. | Await `engine.stop()` before closing the host HTTP/HTTPS server. |
-| Metrics and logging | Offers counter, gauge, observation, and logger callbacks with error-detail redaction in engine helper logs. | Pass `metrics` and `logger`; connect metrics to your own exporter. No backend is bundled. |
-| Sample handlers | Includes `status` and `command` examples outside the transport core. | Run `npm start`, or register your own handlers in a library application. |
-| Python load harness | Measures status replies, fan-out, reconnects, latency, and local process resources. | Follow [Load Testing](docs/LOAD_TESTING.md); this is exploratory loopback evidence only. |
+| Capability                   | What it does                                                                                                                               | How to use it                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Authentication and Origin    | Requires an application auth callback; optionally allows exact origins or an origin callback. Missing Origin is allowed.                   | Configure `authenticate` and `allowedOrigins` in `createEngine`; sample app uses `AUTH_TOKENS` and `ALLOWED_ORIGINS`. |
+| Typed JSON routing           | Decodes JSON, routes by string `type`, and reports malformed or unknown messages.                                                          | Register an async handler with `engine.register(type, handler)`.                                                      |
+| Connection lifecycle         | Tracks identity, client IDs, groups, sends, heartbeat state, and shutdown.                                                                 | Use `connectionManager` or handler context methods.                                                                   |
+| Subscriptions                | Authorizes group joins through the same callback for context and direct manager calls; default is deny.                                    | Supply `authorizeSubscription`; await `ctx.subscribe(group)`.                                                         |
+| Admission and message limits | Bounds connections, pending upgrades, frame size, per-client rate, and in-flight work.                                                     | Configure `limits`; see [all environment options](docs/CONFIGURATION.md).                                             |
+| Backpressure                 | Closes slow clients above per-client buffering limit; optional aggregate pending-send cap rejects a send without disconnecting the target. | Configure `maxBufferedBytes` and, after workload sizing, `maxTotalBufferedBytes`.                                     |
+| Heartbeat                    | Pings clients and terminates stale connections based on pong age.                                                                          | Configure `heartbeatIntervalMs` and `staleThresholdMs`; zero interval disables the timer.                             |
+| Callback deadlines           | Bounds Origin and authentication callback wait time and releases pending-upgrade capacity on timeout.                                      | Configure `originCheckMs` and `authenticateMs`; callback Promise work itself cannot be forcibly cancelled.            |
+| Graceful drain               | Stops upgrade admission, closes clients, waits for close events, then terminates remaining sockets after the deadline.                     | Await `engine.stop()` before closing the host HTTP/HTTPS server.                                                      |
+| Metrics and logging          | Offers counter, gauge, observation, and logger callbacks with error-detail redaction in engine helper logs.                                | Pass `metrics` and `logger`; connect metrics to your own exporter. No backend is bundled.                             |
+| Sample handlers              | Includes `status` and `command` examples outside the transport core.                                                                       | Run `npm start`, or register your own handlers in a library application.                                              |
+| Python load harness          | Measures status replies, fan-out, reconnects, latency, and local process resources.                                                        | Follow [Load Testing](docs/LOAD_TESTING.md); this is exploratory loopback evidence only.                              |
 
 ## Built-In Messages
 
 The standalone app registers `status` and `command`; library consumers can register their own message types.
 
-| Request | Access | Behavior |
-| --- | --- | --- |
-| `{ "type":"status", "data":{...} }` | Authenticated client | Replies with acknowledgement, server time, and echoed data. |
-| `status` with `data.request: "snapshot"` | Admin | Returns managed connection count and server time. |
-| `status` with `data.broadcast: true` | Admin | Sends status to every other connection; sender gets no success reply. |
-| `command` with `name: "ping"` | Authenticated client | Returns `{ pong:true, at:<unix-ms> }`. |
-| `command` with `name: "echo"` | Authenticated client | Returns `args`, or `null`. |
-| `command` with `name: "broadcast"` | Admin | Sends `args` to other clients and returns the successful send count. |
-| `command` with `name: "shutdown-client"` | Admin | Closes the specified client with code `1000`. |
+| Request                                  | Access               | Behavior                                                              |
+| ---------------------------------------- | -------------------- | --------------------------------------------------------------------- |
+| `{ "type":"status", "data":{...} }`      | Authenticated client | Replies with acknowledgement, server time, and echoed data.           |
+| `status` with `data.request: "snapshot"` | Admin                | Returns managed connection count and server time.                     |
+| `status` with `data.broadcast: true`     | Admin                | Sends status to every other connection; sender gets no success reply. |
+| `command` with `name: "ping"`            | Authenticated client | Returns `{ pong:true, at:<unix-ms> }`.                                |
+| `command` with `name: "echo"`            | Authenticated client | Returns `args`, or `null`.                                            |
+| `command` with `name: "broadcast"`       | Admin                | Sends `args` to other clients and returns the successful send count.  |
+| `command` with `name: "shutdown-client"` | Admin                | Closes the specified client with code `1000`.                         |
 
 Example ping exchange:
 
 ```json
-{"type":"command","name":"ping"}
+{ "type": "command", "name": "ping" }
 ```
 
 ```json
-{"type":"command","name":"ping","result":{"pong":true,"at":1793217600000}}
+{
+  "type": "command",
+  "name": "ping",
+  "result": { "pong": true, "at": 1793217600000 }
+}
 ```
 
 Broadcast counts measure successful `ws.send` calls; they do not prove that recipients processed a message. See [Protocol Reference](docs/WEBSOCKET_PROTOCOL.md) for complete schemas, errors, access rules, and close codes.
@@ -178,17 +182,17 @@ async function shutdown() {
 
 The package itself reads no environment variables. The standalone app maps its environment to engine settings; these are the primary defaults.
 
-| Setting | Default |
-| --- | ---: |
-| HTTP port | `8080` |
-| Managed connections / pending upgrades | `10000` / `256` |
-| Per-client messages/sec / in-flight messages | `100` / `32` |
-| Inbound payload | `65536` bytes |
-| Per-client buffered bytes | `1048576` bytes |
-| Subscriptions/client / group name length | `100` / `128` |
-| Heartbeat interval / stale threshold | `30000` / `45000` ms |
-| Origin/auth timeout | `5000` / `5000` ms |
-| Shutdown drain timeout | `10000` ms |
+| Setting                                      |              Default |
+| -------------------------------------------- | -------------------: |
+| HTTP port                                    |               `8080` |
+| Managed connections / pending upgrades       |      `10000` / `256` |
+| Per-client messages/sec / in-flight messages |         `100` / `32` |
+| Inbound payload                              |        `65536` bytes |
+| Per-client buffered bytes                    |      `1048576` bytes |
+| Subscriptions/client / group name length     |        `100` / `128` |
+| Heartbeat interval / stale threshold         | `30000` / `45000` ms |
+| Origin/auth timeout                          |   `5000` / `5000` ms |
+| Shutdown drain timeout                       |           `10000` ms |
 
 Optional global message-rate and total buffered-byte caps default to `Infinity` in the library and are disabled unless set. Configure finite values from a representative workload; defaults are guardrails, not capacity promises. See [Configuration Reference](docs/CONFIGURATION.md) for validation and all environment variables.
 

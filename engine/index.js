@@ -10,10 +10,38 @@ const { createConnectionManager } = require("./connection-manager");
 const { createMessageRouter } = require("./message-router");
 const { createMetrics, safeLog } = require("./observability");
 
+function resolveUpgradePath(path) {
+  if (path === undefined) return null;
+  if (
+    typeof path !== "string" ||
+    !path.startsWith("/") ||
+    path.includes("?") ||
+    path.includes("#")
+  ) {
+    throw new TypeError("path must be an absolute URL pathname");
+  }
+
+  try {
+    const parsed = new URL(path, "http://localhost");
+    if (
+      parsed.origin !== "http://localhost" ||
+      parsed.pathname !== path ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      throw new TypeError("path must be an absolute URL pathname");
+    }
+  } catch {
+    throw new TypeError("path must be an absolute URL pathname");
+  }
+  return path;
+}
+
 function createEngine({
   authenticate,
   authorizeSubscription = async () => false,
   allowedOrigins = [],
+  path,
   limits = {},
   heartbeat = {},
   timeouts = {},
@@ -31,6 +59,7 @@ function createEngine({
   const config = resolveLimits(limits);
   const heartbeatConfig = resolveHeartbeat(heartbeat);
   const timeoutConfig = resolveTimeouts(timeouts);
+  const upgradePath = resolveUpgradePath(path);
   const metrics = createMetrics(metricsOption, logger);
 
   const connectionManager = createConnectionManager({
@@ -52,6 +81,9 @@ function createEngine({
   });
   let attachedServer = null;
   let pendingUpgrades = 0;
+  const activeCallbacks = new Set();
+  const activeHandlerControllers = new Set();
+  let activeHandlerWork = 0;
   let stopped = false;
   let globalTokens = config.maxGlobalMessagesPerSecond;
   let globalLastRefill = Date.now();
@@ -94,20 +126,71 @@ function createEngine({
   }
 
   function withTimeout(callback, timeoutMs, callbackName) {
-    let timer;
-    const timeout = new Promise((_, reject) => {
-      timer = setTimeout(() => {
-        const error = new Error(`${callbackName} timed out`);
-        error.code = "CALLBACK_TIMEOUT";
-        error.callbackName = callbackName;
-        reject(error);
-      }, timeoutMs);
-    });
-    return Promise.race([Promise.resolve().then(callback), timeout]).finally(
-      () => {
-        clearTimeout(timer);
+    const controller = new AbortController();
+    activeCallbacks.add(controller);
+    const providerWork = Promise.resolve().then(() =>
+      callback(controller.signal),
+    );
+    const callbackWork = providerWork.then(
+      (value) => {
+        if (controller.signal.aborted) throw controller.signal.reason;
+        return value;
+      },
+      (error) => {
+        if (controller.signal.aborted) throw controller.signal.reason || error;
+        throw error;
       },
     );
+    const workSettled = providerWork.then(
+      () => activeCallbacks.delete(controller),
+      () => activeCallbacks.delete(controller),
+    );
+    let timer;
+    let rejectAborted;
+    const aborted = new Promise((_, reject) => {
+      rejectAborted = () => reject(controller.signal.reason);
+      controller.signal.addEventListener("abort", rejectAborted, {
+        once: true,
+      });
+    });
+    const promise = Promise.race([callbackWork, aborted]).finally(() => {
+      clearTimeout(timer);
+      controller.signal.removeEventListener("abort", rejectAborted);
+    });
+    timer = setTimeout(() => {
+      const error = new Error(`${callbackName} timed out`);
+      error.code = "CALLBACK_TIMEOUT";
+      error.callbackName = callbackName;
+      controller.abort(error);
+    }, timeoutMs);
+
+    return { promise, workSettled };
+  }
+
+  function abortActiveCallbacks() {
+    const reason = new Error("engine stopped");
+    reason.code = "ENGINE_STOPPED";
+    for (const controller of activeCallbacks) {
+      if (!controller.signal.aborted) controller.abort(reason);
+    }
+  }
+
+  function abortActiveHandlers() {
+    const reason = new Error("engine stopped");
+    reason.code = "ENGINE_STOPPED";
+    for (const controller of activeHandlerControllers) {
+      if (!controller.signal.aborted) controller.abort(reason);
+    }
+  }
+
+  function releasePendingUpgradeAfter(workSettled) {
+    if (workSettled) {
+      workSettled.then(() => {
+        pendingUpgrades--;
+      });
+      return;
+    }
+    pendingUpgrades--;
   }
 
   function rejectUpgrade(socket, status, message) {
@@ -119,12 +202,12 @@ function createEngine({
     );
   }
 
-  async function originAllowed(req) {
+  async function originAllowed(req, options) {
     const origin = req.headers.origin;
     if (!origin) return true;
     if (allowedOrigins === "*") return true;
     if (typeof allowedOrigins === "function") {
-      return !!(await allowedOrigins(origin, req));
+      return !!(await allowedOrigins(origin, req, options));
     }
     return Array.isArray(allowedOrigins) && allowedOrigins.includes(origin);
   }
@@ -147,6 +230,15 @@ function createEngine({
   }
 
   async function handleUpgrade(req, socket, head) {
+    if (upgradePath) {
+      try {
+        if (new URL(req.url, "http://localhost").pathname !== upgradePath) {
+          return;
+        }
+      } catch {
+        return;
+      }
+    }
     socket.on("error", () => {});
     if (stopped) {
       return rejectUpgrade(socket, "503 Service Unavailable", "engine stopped");
@@ -155,15 +247,18 @@ function createEngine({
       return rejectUpgrade(socket, "503 Service Unavailable", "server busy");
     }
     pendingUpgrades++;
+    let providerWorkSettled = null;
 
     try {
       let isOriginAllowed;
       try {
-        isOriginAllowed = await withTimeout(
-          () => originAllowed(req),
+        const originCheck = withTimeout(
+          (signal) => originAllowed(req, { signal }),
           timeoutConfig.originCheckMs,
           "origin check",
         );
+        providerWorkSettled = originCheck.workSettled;
+        isOriginAllowed = await originCheck.promise;
       } catch (error) {
         if (error?.code === "CALLBACK_TIMEOUT") {
           return rejectUpgrade(
@@ -187,11 +282,13 @@ function createEngine({
 
       let identity;
       try {
-        identity = await withTimeout(
-          () => authenticate(req),
+        const authentication = withTimeout(
+          (signal) => authenticate(req, { signal }),
           timeoutConfig.authenticateMs,
           "authentication",
         );
+        providerWorkSettled = authentication.workSettled;
+        identity = await authentication.promise;
       } catch (error) {
         if (error?.code === "CALLBACK_TIMEOUT") {
           return rejectUpgrade(
@@ -240,11 +337,20 @@ function createEngine({
         }
         metrics.increment("ws.upgrades.accepted");
 
+        const handlerController = new AbortController();
+        activeHandlerControllers.add(handlerController);
+        const abortHandlerController = () => {
+          if (!handlerController.signal.aborted) handlerController.abort();
+          activeHandlerControllers.delete(handlerController);
+        };
+        ws.once("close", abortHandlerController);
+        ws.once("error", abortHandlerController);
         const ctx = {
           clientId,
           identity,
           client,
           meta: identity,
+          signal: handlerController.signal,
           reply: (payload) => connectionManager.sendTo(clientId, payload),
           subscribe: (group) =>
             connectionManager.subscribe(clientId, group, req),
@@ -284,6 +390,13 @@ function createEngine({
             ws.close(1013, "too many in-flight messages");
             return;
           }
+          if (activeHandlerWork >= config.maxGlobalConcurrentMessages) {
+            metrics.increment("ws.messages.dropped", 1, {
+              reason: "global_concurrency_limit",
+            });
+            ws.close(1013, "server is busy");
+            return;
+          }
           if (config.maxGlobalMessagesPerSecond !== Infinity) {
             const globalNow = Date.now();
             globalTokens = Math.min(
@@ -305,18 +418,24 @@ function createEngine({
           }
           tokens -= 1;
           activeMessages++;
+          activeHandlerWork++;
           messageRouter
             .dispatch(ctx, raw)
             .catch((error) => {
               metrics.increment("ws.messages.dispatch_failures");
               safeLog(logger, "error", "[engine] dispatch error", error);
             })
-            .finally(() => activeMessages--);
+            .finally(() => {
+              activeMessages--;
+              activeHandlerWork--;
+            });
         });
       });
     } catch (error) {
       safeLog(logger, "warn", "[engine] upgrade rejected", error);
-      if (error?.code === "CALLBACK_TIMEOUT") {
+      if (stopped) {
+        rejectUpgrade(socket, "503 Service Unavailable", "engine stopped");
+      } else if (error?.code === "CALLBACK_TIMEOUT") {
         rejectUpgrade(
           socket,
           "503 Service Unavailable",
@@ -326,7 +445,7 @@ function createEngine({
         rejectUpgrade(socket, "500 Internal Server Error", "connection failed");
       }
     } finally {
-      pendingUpgrades--;
+      releasePendingUpgradeAfter(providerWorkSettled);
     }
   }
 
@@ -344,6 +463,8 @@ function createEngine({
     if (stopPromise) return stopPromise;
     stopped = true;
     detach();
+    abortActiveCallbacks();
+    abortActiveHandlers();
     stopMetrics();
     stopPromise = (async () => {
       await connectionManager.drain(timeoutConfig.shutdownDrainMs);

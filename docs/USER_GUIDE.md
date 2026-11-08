@@ -128,7 +128,7 @@ Run the repository's correctness tests with:
 npm test
 ```
 
-The package script runs Node's built-in test runner (`node --test`). The current suite has 12 tests covering selected configuration, handshake, authorization, publish, limit, timeout, shutdown, observability, and composition behavior. It is not a load test and does not mean every option has a dedicated test.
+The package script runs Node's built-in test runner (`node --test`). The current suite has 20 tests covering selected configuration, handshake, authorization, publish, limits, callback and handler cancellation/accounting, shutdown, observability, and composition behavior. It is not a load test and does not mean every option has a dedicated test.
 
 ## Troubleshooting
 
