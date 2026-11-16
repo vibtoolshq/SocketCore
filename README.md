@@ -38,7 +38,7 @@ SocketCore is a configurable Node.js WebSocket engine for authenticated real-tim
 - [Tests and Load Study](#tests-and-load-study)
 - [Security and Deployment](#security-and-deployment)
 - [Project and License](#project-and-license)
-- [Production Release Gate](project/RELEASE_READINESS_AUDIT.md) — **NO-GO** until live CI, real WSS/operations, 4 GiB target load/SLO and rollback evidence exist
+- [Production Deployment Gate](project/RELEASE_READINESS_AUDIT.md) — **NO-GO for real WSS/VPS deployment** pending target load/SLO and operational rollback evidence; npm library release is separately authorized
 
 ## Quick Start
 
@@ -153,6 +153,12 @@ Broadcast counts measure successful `ws.send` calls; they do not prove that reci
 
 ## Use as a Library
 
+When the npmjs public tarball is available after first-publish scanning, install the library in **your application directory** (not the SocketCore repository):
+
+```sh
+npm install configurable-websocket-engine@1.0.0
+```
+
 The package root exports `createEngine`. The embedding application creates and owns its HTTP/HTTPS server, TLS, routes, and listen lifecycle.
 
 ```js
@@ -227,7 +233,7 @@ Read [Security Policy](SECURITY.md) and [Production Deployment Boundaries](docs/
 
 - **Project:** SocketCore.
 - **Description:** Reusable Node.js WebSocket engine for authenticated real-time messaging, configurable limits, backpressure, metrics hooks, and graceful shutdown.
-- **npmjs package candidate:** `configurable-websocket-engine` version `1.0.0`; CommonJS; Node.js `>=20`; root export `createEngine`. This name is not an established/published npm release yet. `npm run verify:package` confirms the exact 11-file production tarball, MIT and metadata; [npm release preparation](docs/NPM_RELEASE_PREP.md) records account/ownership, CI and publication requirements. **Do not assume the package is available to install from npmjs before publication.**
+- **npmjs package:** [`configurable-websocket-engine@1.0.0`](https://www.npmjs.com/package/configurable-websocket-engine) (MIT, CommonJS, Node.js `>=20`, exports `createEngine`). Owner-authorized GitHub Actions [publish job succeeded](https://github.com/vibtoolshq/SocketCore/actions/runs/43951626306) on 2026-11-17 with signed provenance and an 11-file package. npm confirmed initial processing; **public registry metadata/install availability may lag the successful publish job**. See [npm release documentation](docs/NPM_RELEASE_PREP.md) and verify the public registry before assuming installation is available.
 - **Author attribution:** Md Nurnobi and Vib Tools. Verified contact and profile details are in [AUTHORS.md](AUTHORS.md); no unverified executive or legal title is implied.
 - **License:** [MIT License](LICENSE) — free and open source; use, modify, distribute, and use commercially subject to retaining the copyright and permission notice. Copyright (c) 2026 Md Nurnobi (see [AUTHORS.md](AUTHORS.md)). Third-party dependencies retain their own licenses.
 

@@ -7,7 +7,7 @@
 - `package.json`: CommonJS `main`/`exports` root `createEngine`, Node `>=20`, locked dependency `ws` (lockfile currently resolves `ws@8.22.0`), MIT, version `1.0.0`, repository/homepage/bugs/keywords and explicit `files` whitelist.
 - `npm run verify:package` runs a read-only `npm pack --dry-run --json --ignore-scripts` and validates **exactly 11** approved files: README, LICENSE, package metadata, all five `engine/*.js` runtime modules and `docs/CONFIGURATION.md`, `docs/ENGINE_API.md`, `docs/WEBSOCKET_PROTOCOL.md`.
 - Development/CI-only materials (`notes/`, `test/`, `scripts/`, `load-test/`, `project/`, `.github/`, `.vscode/`, `AGENTS.md`, `AI_INSTRUCTIONS.md`, raw npm credentials) are **excluded from the npm tarball**. Repository is still open source; the package is simply smaller.
-- GitHub Actions `npm package readiness / no publish` validates the whitelist, creates a tarball, performs a clean consumer install and imports `createEngine`; a passing run uploads an **npm tarball as a GitHub Actions artifact with 7-day retention**. This artifact is **not** published to npmjs and does not create a GitHub Release. No `npm publish` step exists.
+- The read-only GitHub Actions `npm package readiness / no publish` job validates the whitelist, creates a tarball, performs a clean consumer install and imports `createEngine`; it uploads a **GitHub Actions artifact with 7-day retention**, not an npmjs release. The separate `publish-npm.yml` workflow (NPM-01) contains the sole authorized `npm publish` step.
 
 ## NPM-01 one-time tagged publishing workflow (authorized 2026-11-17)
 
@@ -21,7 +21,7 @@ After the workflow runs, verify **actual** npmjs registry `configurable-websocke
 
 - Registry: `https://registry.npmjs.org/`.
 - `npm view configurable-websocket-engine name version dist-tags --json` returned **E404** (name not found/not accessible at that time). This **does not reserve or guarantee ownership** or prove future availability.
-- `npm whoami` returned **ENEEDAUTH** in the connected Windows environment. No npm login, OTP, access token, trusted-publisher registration or npmjs account ownership was established. **Publishing is BLOCKED** until these are addressed.
+- **Before NPM-01**, `npm whoami` on the connected Windows PC returned **ENEEDAUTH**; that machine had no local npm login. The subsequently authorized GitHub Actions publish job successfully used the **GitHub organization secret** (token contents never inspected or logged), so a Windows npm login was **not required for that CI publication**. Account-identity actions remain separate from package publishing.
 - The repository's GitHub organization and npmjs package namespace are **not automatically the same account**. Before attempting the first public release, the owner must verify who controls the chosen npm package name and whether a public unscoped package under that name is desired. For a scoped `@org/name` package, first verify actual npm org ownership and choose the name explicitly.
 
 ## Local read-only checks
@@ -33,7 +33,7 @@ npm run verify:package
 npm audit --omit=dev --audit-level=high
 ```
 
-These commands **do not publish** anything. The reported npm release version is only a candidate until an actual approved `npm publish` occurs. Test runtime from the generated npm package via the GitHub Actions consumer-install smoke. A registry package page will not exist until publication.
+These local commands **do not publish** anything. The **separate** NPM-01 GitHub Actions publish job succeeded for version 1.0.0; see the recorded run below. Its verified CI tarball consumer import is distinct from an install against the **public npm registry**, which can lag initial publication processing.
 
 ## Future releases after approved 1.0.0 (separate explicit authorization required)
 
@@ -44,3 +44,11 @@ These commands **do not publish** anything. The reported npm release version is 
 5. Obtain separate explicit permission to create a tag/GitHub Release or `npm publish` (these are distinct actions). If real public WSS/VPS production deployment is part of the distribution acceptance policy, its 4 GiB workload/SLO, operator monitoring and rollback drill must also be approved and measured.
 
 **Do not assume the GitHub Actions loopback load is the target 4 GiB VPS qualification.** The formal [production release gate](../project/RELEASE_READINESS_AUDIT.md) remains **NO-GO** until the missing external evidence has actually been collected.
+
+## NPM-01 actual GitHub Actions npm publish result (2026-11-17)
+
+The separately owner-authorized, **single-version** first npmjs publish was accepted by GitHub Actions: [run 43951626306](https://github.com/vibtoolshq/SocketCore/actions/runs/43951626306) on tag `npm-v1.0.0`, pointing to source commit `4f2fd08ab62bf11d42683f6c0ca9ade0c41575c6`. Both preflight and publisher jobs **succeeded**, with exact green [CI run 43951316943](https://github.com/vibtoolshq/SocketCore/actions/runs/43951316943). npm returned `+ configurable-websocket-engine@1.0.0` (11-file public package) and published a **signed provenance statement**: [transparency log evidence](https://search.sigstore.dev/?logIndex=3934380418). No token value was printed or stored in this repository.
+
+The public npm registry subsequently listed `1.0.0` with `latest: 1.0.0`, and the version metadata returned MIT and an attestation. **At the first immediate consumer-install acceptance attempts the package's tarball URL still returned HTTP 404**, despite the public metadata being present. npm's own publish log warned that the package was being processed; npm's 2026 publish-time security scanning can delay installation. Consequently, this evidence **proves successful publication acceptance and public metadata, but not yet a successful anonymous registry tarball download/install**. Do not retry or re-publish the immutable same name/version while registry processing is in progress. A later independent fresh-cache npm install/import check must be recorded once the tarball becomes available.
+
+The GitHub workflow does not auto-publish future versions, and there was no GitHub Release, PyPI publish, VPS change or public WSS production deployment. Production infrastructure/4 GiB VPS SLO gates remain separate from the npmjs library-release operation.

@@ -6,6 +6,12 @@
 
 The owner subsequently authorized a **one-time public npmjs publication**, using the existing GitHub organization secret `NPM_TOKEN`. The independent [publish workflow](../.github/workflows/publish-npm.yml) triggers **only** when the exact tag `npm-v1.0.0` is pushed. It does not publish on a normal `main` push or PR. It first verifies a green complete `SocketCore CI` run on the tagged commit, re-runs Node regression tests, package whitelist and high+ dependency audit, and only then uses `NODE_AUTH_TOKEN` in a tightly scoped publish step with npm provenance. GitHub Actions `id-token:write` is restricted to the publisher job. **This is not an automatic production deployment or a substitute for real WSS/4 GiB VPS acceptance.** See [npmjs release preparation](NPM_RELEASE_PREP.md) for ownership, authentication and forward-looking OIDC migration.
 
+## Actual GH-01 / NPM-01 run evidence — 2026-11-17
+
+- [GH-01 release-definition commit full CI](https://github.com/vibtoolshq/SocketCore/actions/runs/43951316943) for `4f2fd08ab62bf11d42683f6c0ca9ade0c41575c6`: Node 20/22/24/26 matrix (34 each), Python 100-client local loopback, npm tarball clean install, high+ dependency audit and final required CI gate **all SUCCESS**.
+- [NPM-01 tagged npm publishing run](https://github.com/vibtoolshq/SocketCore/actions/runs/43951626306) on tag `npm-v1.0.0` pointing to the same commit: preflight and `Publish npmjs package with provenance` jobs **SUCCESS**. The npm CLI printed `+ configurable-websocket-engine@1.0.0` and signed provenance. npm indicated asynchronous initial processing; first public registry check returned 404, so independent registry read remains pending at that checkpoint. **Do not re-publish to resolve processing delays.**
+- Neither successful CI nor npm library publication establishes **production** WSS/4 GiB VPS capacity or tested deployment rollback.
+
 ## Triggers and jobs
 
 The workflow runs for a push to `main`, pull requests targeting `main`, and manually through **Actions → SocketCore CI → Run workflow**.
