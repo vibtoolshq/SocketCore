@@ -1,0 +1,136 @@
+name: Publish SocketCore 1.0.0 to npmjs
+
+# Explicit one-time trigger. No npm publication on push to main or pull requests.
+on:
+  push:
+    tags:
+      - npm-v1.0.0
+
+permissions:
+  contents: read
+
+concurrency:
+  group: socketcore-npm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Verify exact tag, green CI, tests and registry safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout exact release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node 26
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          package-manager-cache: false
+      - name: Require matching version, protected main HEAD and successful full CI
+        env:
+          GH_API_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+          const tag = process.env.GITHUB_REF;
+          const sha = process.env.GITHUB_SHA;
+          const repo = process.env.GITHUB_REPOSITORY;
+          const base = process.env.GITHUB_API_URL;
+          const token = process.env.GH_API_TOKEN;
+          assert.equal(pkg.name, 'configurable-websocket-engine');
+          assert.equal(pkg.version, '1.0.0');
+          assert.equal(pkg.license, 'MIT');
+          assert.equal(tag, 'refs/tags/npm-v' + pkg.version);
+          assert.ok(/^[0-9a-f]{40}$/.test(sha));
+          assert.equal(repo, 'vibtoolshq/SocketCore');
+          assert.ok(token && token.length > 10, 'GitHub read-only API token missing');
+          async function api(path) {
+            const res = await fetch(base + '/repos/' + repo + path, {
+              headers: {
+                Authorization: 'Bearer ' + token,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+              }
+            });
+            if (!res.ok) throw new Error('GitHub read-only API returned HTTP ' + res.status);
+            return res.json();
+          }
+          (async () => {
+            const ref = await api('/git/ref/heads/main');
+            assert.equal(ref.object.sha, sha, 'Release tag must point at current main HEAD');
+            const runs = await api('/actions/workflows/ci.yml/runs?head_sha=' + sha + '&event=push&per_page=20');
+            assert.ok(runs.workflow_runs.some(run =>
+              run.head_sha === sha &&
+              run.head_branch === 'main' &&
+              run.event === 'push' &&
+              run.status === 'completed' &&
+              run.conclusion === 'success'
+            ), 'No successful full SocketCore CI run for this SHA');
+            console.log('RELEASE_SHA_AND_REQUIRED_CI_VERIFIED', sha);
+          })().catch(e => { console.error('RELEASE_PREFLIGHT_BLOCKED:', e.message); process.exitCode = 1; });
+          NODE
+      - name: Install exactly from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Re-run 34 security, WSS and regression tests
+        run: npm test
+      - name: Verify npm package whitelist and metadata without publishing
+        run: npm run verify:package
+      - name: Fail closed on high and critical production dependency advisories
+        run: npm audit --omit=dev --audit-level=high
+      - name: Verify tag's package version is not already published
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npm view configurable-websocket-engine@1.0.0 version --json --registry=https://registry.npmjs.org/ --fetch-retries=0 > "$RUNNER_TEMP/npm-version-check.txt" 2>"$RUNNER_TEMP/npm-version-error.txt"; then
+            echo "::error::Version 1.0.0 already exists on npmjs; refusing overwrite"
+            exit 1
+          fi
+          if ! grep -q 'E404' "$RUNNER_TEMP/npm-version-error.txt"; then
+            echo "::error::npm registry lookup failed unexpectedly; refusing to publish"
+            exit 1
+          fi
+          echo "NPM_VERSION_NOT_FOUND_INITIAL_PUBLISH_ALLOWED"
+
+  publish:
+    name: Publish npmjs package with provenance
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout audited release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node 26 and npmjs registry
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Locked install
+        run: npm ci --no-audit --no-fund
+      - name: Verify exact public package content again
+        run: npm run verify:package
+      - name: Publish this version publicly with GitHub provenance
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${NODE_AUTH_TOKEN:-}" ]]; then
+            echo "::error::Organization/repository secret NPM_TOKEN is missing or not accessible"
+            exit 1
+          fi
+          npm publish --access public --provenance --ignore-scripts

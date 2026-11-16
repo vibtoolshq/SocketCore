@@ -2,6 +2,10 @@
 
 **Implementation:** PU-03 workflow, expanded in GH-01 (2026-11-17). Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). This CI is **read-only**: no deployment, token permissions beyond `contents: read`, npm publish, GitHub Release or tag creation. A green runner is not a real 4 GiB production VPS acceptance.
 
+## NPM-01 publishing workflow (separate authorization)
+
+The owner subsequently authorized a **one-time public npmjs publication**, using the existing GitHub organization secret `NPM_TOKEN`. The independent [publish workflow](../.github/workflows/publish-npm.yml) triggers **only** when the exact tag `npm-v1.0.0` is pushed. It does not publish on a normal `main` push or PR. It first verifies a green complete `SocketCore CI` run on the tagged commit, re-runs Node regression tests, package whitelist and high+ dependency audit, and only then uses `NODE_AUTH_TOKEN` in a tightly scoped publish step with npm provenance. GitHub Actions `id-token:write` is restricted to the publisher job. **This is not an automatic production deployment or a substitute for real WSS/4 GiB VPS acceptance.** See [npmjs release preparation](NPM_RELEASE_PREP.md) for ownership, authentication and forward-looking OIDC migration.
+
 ## Triggers and jobs
 
 The workflow runs for a push to `main`, pull requests targeting `main`, and manually through **Actions → SocketCore CI → Run workflow**.
