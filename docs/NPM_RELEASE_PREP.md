@@ -1,6 +1,6 @@
 # SocketCore — npmjs Release Preparation and Publication Controls
 
-**Package:** `configurable-websocket-engine@1.0.0` (existing package name/version retained, not silently renamed to an unverified npm scope). **License:** MIT. **Repository:** [vibtoolshq/SocketCore](https://github.com/vibtoolshq/SocketCore). **GH-01 baseline:** no publication was authorized. **NPM-01 update (2026-11-17):** owner has now explicitly authorized a **one-time GitHub Actions publication of version 1.0.0**, using the existing organization-scoped `NPM_TOKEN` secret. Publication must be verified separately from the registry; merely authoring the workflow or pushing a tag does not prove success.
+**Package:** `configurable-websocket-engine@1.0.0` (existing package name/version retained, not silently renamed to an unverified npm scope). **License:** MIT. **Repository:** [vibtoolshq/SocketCore](https://github.com/vibtoolshq/SocketCore). **GH-01 baseline:** no publication was authorized. **NPM-01 FINAL (2026-11-17):** the owner authorized **one-time GitHub Actions publication of version 1.0.0** using the existing organization-scoped `NPM_TOKEN`. The publishing job **succeeded**, npm served public 1.0.0 metadata, signed provenance was verified, and after npm's publish-time security scan a completely fresh consumer installed and imported `createEngine` successfully from the official registry. **This is a published npm library, not a production VPS deployment.**
 
 ## What is ready locally
 
@@ -15,7 +15,7 @@ The new [`.github/workflows/publish-npm.yml`](../.github/workflows/publish-npm.y
 
 This is **one-time authorized direct token publishing** and is deliberately not suitable as an automatically repeating release pipeline. Access to the `NPM_TOKEN` organization secret must include the public GitHub repository. A publish attempt can still fail because of npm namespace ownership, token scope, token revocation, 2FA policy, or registry availability; such failures must be reported and cannot be called success. npmjs official guidance says direct Bypass-2FA-token publishing is being removed in January 2027; future releases should move to **Trusted Publishing (OIDC)** with reviewed package ownership, ideally scoped permissions, and token rotation. The separate user-uploaded **PyPI** token is unrelated and must never be used to publish npm.
 
-After the workflow runs, verify **actual** npmjs registry `configurable-websocket-engine@1.0.0` and public package page, plus GitHub Actions job conclusion and provenance. No GitHub Release, production VPS WSS/proxy, capacity test or production deployment is part of the npmjs publication workflow.
+**Actual results verified:** [publish workflow run 43951626306](https://github.com/vibtoolshq/SocketCore/actions/runs/43951626306) **SUCCESS**, npmjs public metadata and 1.0.0 tarball accessible after the scanner finished, signed provenance present and a fresh public `npm install configurable-websocket-engine@1.0.0` followed by `require('configurable-websocket-engine').createEngine` **PASS** (exit 0). No GitHub Release, production VPS WSS/proxy, capacity test or deployment occurred.
 
 ## Registry and identity checks (observed 2026-11-17)
 
