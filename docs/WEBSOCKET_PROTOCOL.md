@@ -4,7 +4,7 @@
 
 ## Upgrade and Connection
 
-The engine accepts HTTP WebSocket upgrade requests on the HTTP server supplied to `engine.attach(server)`; the standalone `app.js` does not enforce a URL path. Requests without `Origin` are allowed. A provided Origin must exactly match `ALLOWED_ORIGINS`, unless wildcard is configured. The standalone app authenticates with the `x-auth-token` header. Origin checks do not replace authentication.
+The engine accepts HTTP WebSocket upgrade requests on the HTTP server supplied to `engine.attach(server)`; the standalone `app.js` does not enforce a URL path. Requests without `Origin` are allowed. A provided Origin must exactly match `ALLOWED_ORIGINS`, unless wildcard is configured. The standalone app authenticates with the `x-auth-token` header. Standard browser `WebSocket` constructors cannot set this arbitrary request header; browser credential transport requires a separate, security-reviewed consuming-application design. The engine does not issue, expire, rotate, revoke, or persist tokens. Origin checks do not replace authentication.
 
 After a successful upgrade, the server sends:
 
@@ -21,7 +21,7 @@ After a successful upgrade, the server sends:
 | `503 Service Unavailable`   | Engine stopped, pending-upgrade/connection cap reached, or origin/auth callback timed out. |
 | `500 Internal Server Error` | An unexpected upgrade callback/handling error occurred.                                    |
 
-The upgrade path applies the origin callback before authentication. Async origin and authentication callbacks have independent deadlines. A timed-out callback causes `503` and releases the pending-upgrade slot, but its underlying Promise may continue because the engine cannot cancel arbitrary JavaScript work.
+The upgrade path applies the Origin callback before authentication. Async Origin and authentication callbacks have independent deadlines. A callback timeout returns HTTP `503` and aborts its cooperative `AbortSignal`; **the pending-upgrade work slot stays reserved until the underlying provider Promise settles**, even if the provider ignores abort. Arbitrary non-cooperative JavaScript work cannot be forcibly cancelled.
 
 ## Client Message Envelope and Errors
 
@@ -78,7 +78,7 @@ Custom handlers receive `ctx` containing `clientId`, `identity`, `meta` (the sam
 - Engine-wide message-rate cap defaults to 500 messages/second; excess closes the sending client with 1008. Library consumers can override it or explicitly set `Infinity`.
 - Inbound payload limit is enforced by `ws`; the integration test expects close 1009 for an oversized frame.
 - Per-client output-buffer excess closes a slow client with 1013. Aggregate pending-send cap defaults to 64 MiB; excess rejects only the current send and does not disconnect the target. Library consumers can override it or explicitly set `Infinity`.
-- Origin/auth callbacks have configured deadlines. Timeout returns HTTP 503 and releases the pending-upgrade slot. The underlying callback promise cannot be forcibly cancelled by JavaScript and may continue its own work.
+- Origin/auth callbacks have configured deadlines. Timeout returns HTTP 503 and aborts the callback signal, but the pending-upgrade work slot remains occupied **until the provider promise settles**. Non-cooperative JavaScript work cannot be forcibly cancelled.
 - Shutdown closes clients with 1001, waits for close events up to the configured drain timeout, then terminates remaining sockets before completing `engine.stop()`.
 
 ### WebSocket Close Codes
@@ -89,7 +89,7 @@ Custom handlers receive `ctx` containing `clientId`, `identity`, `meta` (the sam
 | `1001` | Server shutdown/drain.                                                                                    |
 | `1008` | Per-client or configured global message-rate policy violation.                                            |
 | `1009` | Inbound payload exceeds `maxPayloadBytes` (`ws` enforcement).                                             |
-| `1013` | Per-client in-flight-message limit, per-client output-buffer limit, or connection-manager admission race. |
+| `1013` | Per-client or engine-wide in-flight-message limit, per-client output-buffer limit, or connection-manager admission race. |
 
 The close code/reason is not a substitute for application-specific retry policy. This package does not implement a reconnect client or backoff strategy.
 

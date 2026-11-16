@@ -16,9 +16,11 @@ SocketCore is a configurable Node.js WebSocket engine for real-time applications
 Requirements: Node.js `>=20` and npm.
 
 ```sh
-npm install
+npm ci
 npm test
 ```
+
+Use `npm install` only for an intentionally approved dependency change; keep the committed lockfile consistent.
 
 The test command runs the Node.js built-in test runner. The optional Python load harness has separate test-only setup instructions in [docs/LOAD_TESTING.md](docs/LOAD_TESTING.md); do not install its Python dependency as a production package dependency.
 
@@ -33,6 +35,6 @@ The test command runs the Node.js built-in test runner. The optional Python load
 
 ## License and Contribution Terms
 
-This repository currently has no `LICENSE` file and no published contribution agreement. Do not assume the code is open source or that a contribution grants rights to use or redistribute it. Ask the repository owner to publish the intended license and contribution terms before relying on them.
+SocketCore is distributed under the [MIT License](LICENSE), which permits use, modification, redistribution and commercial use subject to its notice requirement. External dependencies have their own licenses. No separate contributor license agreement is published; contributions should be made only where the contributor has the right to submit them. For automated pull-request checks, see [CI Testing](docs/CI_TESTING.md).
 
 For project questions, see [SUPPORT.md](SUPPORT.md). For sensitive security reports, follow [SECURITY.md](SECURITY.md).

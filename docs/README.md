@@ -14,6 +14,8 @@ The root [README](../README.md) is the GitHub project overview. The [project rec
 - [ENGINE_API.md](ENGINE_API.md): using the package as a library, factory options, lifecycle methods, and exposed manager/router APIs.
 - [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md): deployment responsibilities, security boundaries, workload sizing, and release checklist.
 - [LOAD_TESTING.md](LOAD_TESTING.md): installing the isolated Python test client and running the local scale profile.
+- [CI_TESTING.md](CI_TESTING.md): GitHub Actions Node matrix, Python loopback load, npm package checks, locked install, high+ dependency audit and status gate.
+- [NPM_RELEASE_PREP.md](NPM_RELEASE_PREP.md): npmjs metadata, exact 11-file tarball, account/registry ownership blockers and release approval steps (no publish).
 - [MINIFEST.md](MINIFEST.md): direct directory inventory and document status.
 
 ## Accuracy

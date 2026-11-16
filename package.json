@@ -2,13 +2,38 @@
   "name": "configurable-websocket-engine",
   "version": "1.0.0",
   "description": "Configurable WebSocket transport engine for Node.js applications",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vibtoolshq/SocketCore.git"
+  },
+  "homepage": "https://github.com/vibtoolshq/SocketCore#readme",
+  "bugs": {
+    "url": "https://github.com/vibtoolshq/SocketCore/issues"
+  },
+  "keywords": [
+    "websocket",
+    "ws",
+    "socketcore",
+    "real-time",
+    "backpressure",
+    "nodejs",
+    "server"
+  ],
   "main": "engine/index.js",
   "exports": {
     ".": "./engine/index.js"
   },
+  "files": [
+    "engine/",
+    "docs/ENGINE_API.md",
+    "docs/CONFIGURATION.md",
+    "docs/WEBSOCKET_PROTOCOL.md"
+  ],
   "scripts": {
     "start": "node app.js",
-    "test": "node --test"
+    "test": "node --test",
+    "verify:package": "node scripts/verify-npm-package.js"
   },
   "engines": {
     "node": ">=20"

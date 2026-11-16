@@ -8,5 +8,6 @@ Inventory of direct children in `project/`. Update this file when a child is add
 | `MINIFEST.md`         | Active           | Lists direct directory contents and their status.                                           |
 | `PROJECT_OVERVIEW.md` | Current snapshot | SocketCore architecture, feature behavior, limits, scale-study scope, and source ownership. |
 | `DEVELOPMENT_LOG.md`  | Active log       | Dated SocketCore implementation/documentation phases and verification results.              |
+| `RELEASE_READINESS_AUDIT.md` | PU-07 NO-GO + GH-01 CI prep | Final F-01–F-13 evidence, release blockers and GitHub CI/npmjs preparation update (NO publish). |
 
 There are no subdirectories in `project/` in this snapshot.

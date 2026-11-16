@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "reviewState": "DRAFT_UNAPPROVED",
+  "deployment": {
+    "model": null,
+    "vpsOs": null,
+    "nodeVersion": null,
+    "wssUrl": null,
+    "ramGiB": null,
+    "vcpus": null,
+    "tlsTerminator": null,
+    "proxyOwner": null,
+    "certificateOwner": null,
+    "processSupervisor": null,
+    "credentialMethod": null,
+    "metricsOwner": null,
+    "rollbackOwner": null,
+    "applicationOwner": null
+  },
+  "workload": {
+    "clients": null,
+    "rampPerSecond": null,
+    "soakSeconds": null,
+    "requestIntervalSeconds": null,
+    "payloadBytes": null,
+    "broadcastIntervalSeconds": null,
+    "reconnectWaveClients": null,
+    "reconnectWaves": null,
+    "fanoutRecipients": null,
+    "failureRecoveryTrialCount": null,
+    "failureScenarios": null
+  },
+  "slo": {
+    "responseSuccessRatioMin": null,
+    "broadcastDeliveryRatioMin": null,
+    "reconnectSuccessRatioMin": null,
+    "p95MsMax": null,
+    "p99MsMax": null,
+    "cpuOneCorePercentMax": null,
+    "rssMiBMax": null,
+    "eventLoopLagMeanMsMax": null,
+    "recoverySecondsMax": null,
+    "maxUnexpectedErrors": null
+  },
+  "ownerApproval": {
+    "reference": null,
+    "approver": null,
+    "date": null
+  }
+}

@@ -25,7 +25,7 @@
 
 SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging. It manages connections and message flow while your application owns authentication policy, business handlers, and the HTTP or HTTPS server.
 
-> **At a glance:** provide an auth callback, register handlers by message type, attach to your server, then start. The standalone sample is plain HTTP; the local load results are exploratory and are not a production capacity guarantee.
+> **At a glance:** provide an auth callback, register handlers by message type, attach to your server, then start. The standalone sample is plain HTTP; the local load results are exploratory and are not a production capacity guarantee. **Production release gate: [NO-GO — see forensic audit](project/RELEASE_READINESS_AUDIT.md)**. The audit and prior fixes are local and uncommitted/unpushed.
 
 ## Contents
 
@@ -38,14 +38,17 @@ SocketCore is a configurable Node.js WebSocket engine for authenticated real-tim
 - [Tests and Load Study](#tests-and-load-study)
 - [Security and Deployment](#security-and-deployment)
 - [Project and License](#project-and-license)
+- [Production Release Gate](project/RELEASE_READINESS_AUDIT.md) — **NO-GO** until live CI, real WSS/operations, 4 GiB target load/SLO and rollback evidence exist
 
 ## Quick Start
 
-Requirements: Node.js `>=20`, npm, and an authentication token for the sample app.
+Requirements: Node.js `>=20`, npm, and an authentication token for the sample app. In a fresh repository checkout, install exactly the versions pinned by the tracked `package-lock.json`:
 
 ```sh
-npm install
+npm ci
 ```
+
+`node_modules/` is generated locally and ignored by Git; it is **not** required in source control. Use `npm install` only when intentionally changing dependency metadata or lockfile contents, then review those changes separately.
 
 Start the standalone sample with a local token.
 
@@ -110,9 +113,9 @@ flowchart LR
 | Connection lifecycle         | Tracks identity, client IDs, groups, sends, heartbeat state, and shutdown.                                                                 | Use `connectionManager` or handler context methods.                                                                   |
 | Subscriptions                | Authorizes group joins through the same callback for context and direct manager calls; default is deny.                                    | Supply `authorizeSubscription`; await `ctx.subscribe(group)`.                                                         |
 | Admission and message limits | Bounds connections, pending upgrades, frame size, per-client rate, and in-flight work.                                                     | Configure `limits`; see [all environment options](docs/CONFIGURATION.md).                                             |
-| Backpressure                 | Closes slow clients above per-client buffering limit; optional aggregate pending-send cap rejects a send without disconnecting the target. | Configure `maxBufferedBytes` and, after workload sizing, `maxTotalBufferedBytes`.                                     |
+| Backpressure                 | Closes slow clients above per-client buffering limit; default-on aggregate pending-send cap rejects an over-limit send without disconnecting the target. | Configure `maxBufferedBytes` and `maxTotalBufferedBytes`; the aggregate default is 64 MiB and is workload-tunable.                                     |
 | Heartbeat                    | Pings clients and terminates stale connections based on pong age.                                                                          | Configure `heartbeatIntervalMs` and `staleThresholdMs`; zero interval disables the timer.                             |
-| Callback deadlines           | Bounds Origin and authentication callback wait time and releases pending-upgrade capacity on timeout.                                      | Configure `originCheckMs` and `authenticateMs`; callback Promise work itself cannot be forcibly cancelled.            |
+| Callback deadlines           | Bounds Origin and authentication callback wait time; timed-out provider work retains pending-upgrade capacity until it settles.                                      | Configure `originCheckMs` and `authenticateMs`; timeout aborts the callback signal, but non-cooperative work cannot be forcibly stopped.            |
 | Graceful drain               | Stops upgrade admission, closes clients, waits for close events, then terminates remaining sockets after the deadline.                     | Await `engine.stop()` before closing the host HTTP/HTTPS server.                                                      |
 | Metrics and logging          | Offers counter, gauge, observation, and logger callbacks with error-detail redaction in engine helper logs.                                | Pass `metrics` and `logger`; connect metrics to your own exporter. No backend is bundled.                             |
 | Sample handlers              | Includes `status` and `command` examples outside the transport core.                                                                       | Run `npm start`, or register your own handlers in a library application.                                              |
@@ -194,7 +197,7 @@ The package itself reads no environment variables. The standalone app maps its e
 | Origin/auth timeout                          |   `5000` / `5000` ms |
 | Shutdown drain timeout                       |           `10000` ms |
 
-Optional global message-rate and total buffered-byte caps default to `Infinity` in the library and are disabled unless set. Configure finite values from a representative workload; defaults are guardrails, not capacity promises. See [Configuration Reference](docs/CONFIGURATION.md) for validation and all environment variables.
+Global message-rate and aggregate pending-send caps are **enabled by default**: `maxGlobalMessagesPerSecond` is **500 inbound messages/second** and `maxTotalBufferedBytes` is **67108864 bytes (64 MiB)**. The library also defaults `maxGlobalConcurrentMessages` to **1024 in-flight handler operations**. These limits are configurable per engine; library users may explicitly set a limit to `Infinity` to opt out, while the standalone environment parser accepts positive integers. Defaults are guardrails, not production capacity promises. See [Configuration Reference](docs/CONFIGURATION.md) for validation and all environment variables.
 
 ## Tests and Load Study
 
@@ -204,7 +207,9 @@ Run the Node.js correctness suite:
 npm test
 ```
 
-The current suite contains 12 tests. The recorded 1,000- and 2,000-client loopback profiles passed provisional thresholds on one Windows Server 2022 host with Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, and 7.8 GiB installed RAM. At 2,000 clients, the run recorded p95/p99 latency of 7.584/178.432 ms and completed two 500-client reconnect waves.
+On GitHub, [SocketCore CI](docs/CI_TESTING.md) runs on push/PR to `main` and manual dispatch. It uses locked installs, tests the Node.js 20/22/24/26 matrix (**34 Node tests**), safely runs a **100-client GitHub runner loopback** Python load smoke, verifies the 11-file npm tarball/clean consumer import and audits production dependencies for high/critical advisories; all must pass the required CI gate. GitHub runner load is **not** a 4 GiB VPS capacity qualification.
+
+The current local Node regression suite passed **34 tests, 0 failures** on **2026-11-17**; use actual GitHub Actions run results to verify the Linux Node matrix after an authorized push. The recorded 1,000- and 2,000-client loopback profiles passed provisional thresholds on one Windows Server 2022 host with Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, and 7.8 GiB installed RAM. At 2,000 clients, the run recorded p95/p99 latency of 7.584/178.432 ms and completed two 500-client reconnect waves.
 
 These synthetic local measurements are not production SLOs and do not establish supported concurrency on another host, network path, proxy, TLS setup, payload, fan-out pattern, or application workload. See [Load Testing](docs/LOAD_TESTING.md) for full measurements and limits.
 
@@ -222,14 +227,14 @@ Read [Security Policy](SECURITY.md) and [Production Deployment Boundaries](docs/
 
 - **Project:** SocketCore.
 - **Description:** Reusable Node.js WebSocket engine for authenticated real-time messaging, configurable limits, backpressure, metrics hooks, and graceful shutdown.
-- **Package metadata:** `configurable-websocket-engine` version `1.0.0`; CommonJS; Node.js `>=20`; root export `createEngine`.
+- **npmjs package candidate:** `configurable-websocket-engine` version `1.0.0`; CommonJS; Node.js `>=20`; root export `createEngine`. This name is not an established/published npm release yet. `npm run verify:package` confirms the exact 11-file production tarball, MIT and metadata; [npm release preparation](docs/NPM_RELEASE_PREP.md) records account/ownership, CI and publication requirements. **Do not assume the package is available to install from npmjs before publication.**
 - **Author attribution:** Md Nurnobi and Vib Tools. Verified contact and profile details are in [AUTHORS.md](AUTHORS.md); no unverified executive or legal title is implied.
-- **License:** No `LICENSE` file is present. Reuse and redistribution terms have not been specified; do not assume this project is open source.
+- **License:** [MIT License](LICENSE) — free and open source; use, modify, distribute, and use commercially subject to retaining the copyright and permission notice. Copyright (c) 2026 Md Nurnobi (see [AUTHORS.md](AUTHORS.md)). Third-party dependencies retain their own licenses.
 
 ## More
 
 - [User Guide](docs/USER_GUIDE.md) · [Configuration](docs/CONFIGURATION.md) · [Protocol](docs/WEBSOCKET_PROTOCOL.md)
-- [Engine API](docs/ENGINE_API.md) · [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) · [Load Testing](docs/LOAD_TESTING.md)
+- [Engine API](docs/ENGINE_API.md) · [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) · [Load Testing](docs/LOAD_TESTING.md) · [npm release preparation](docs/NPM_RELEASE_PREP.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Authors](AUTHORS.md)
 
 Suggested repository topics: `nodejs`, `websocket`, `real-time-messaging`, `connection-management`, `backpressure`, `graceful-shutdown`, `observability`, `python-load-testing`. Descriptive README content can improve clarity and discoverability, but GitHub/Google indexing and search ranking are controlled by external systems and are not guaranteed.

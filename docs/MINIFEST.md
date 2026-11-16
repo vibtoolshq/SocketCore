@@ -12,5 +12,7 @@ Inventory of direct children in `docs/`. Update this file when a child is added,
 | `ENGINE_API.md`            | Current snapshot | Library factory options, lifecycle, connection manager, and message router APIs.                    |
 | `PRODUCTION_DEPLOYMENT.md` | Current guide    | TLS/proxy/security responsibilities, workload sizing, operations, and deployment release checklist. |
 | `LOAD_TESTING.md`          | Phase 4 complete | Python load-harness setup, measured local profiles, and qualification limitations.                  |
+| `CI_TESTING.md`               | GH-01 CI extension; GitHub run must be verified | Node test matrix, Python loopback load, npm tarball consumer smoke, security and fail-closed CI gate. |
+| `NPM_RELEASE_PREP.md`         | GH-01 preparation, NOT published | npm package name, file whitelist, tarball check, login/ownership blockers and separate publish authorization. |
 
 There are no subdirectories in `docs/` in this snapshot.

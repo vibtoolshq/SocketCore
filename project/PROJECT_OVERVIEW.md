@@ -13,7 +13,7 @@ This document describes SocketCore after remediation Phases 5-7 and the provisio
 - **Suggested repository description:** Reusable Node.js WebSocket engine for authenticated real-time messaging, configurable limits, backpressure, metrics hooks, and graceful shutdown.
 - **Author attribution:** Md Nurnobi; see the verified profile and company contacts in the root [AUTHORS.md](../AUTHORS.md).
 - **Organization:** Vib Tools; no unverified executive or legal title is implied.
-- **License:** No `LICENSE` file is present; reuse terms are unspecified.
+- **License:** **MIT** — owner approved on 2026-11-17; root [`LICENSE`](../LICENSE) with `Copyright (c) 2026 Md Nurnobi`. `package.json` and the lockfile root metadata both declare MIT; the `ws` dependency keeps its independent third-party MIT license. F-06 licensing decision closed locally, not yet pushed.
 
 This is a WebSocket transport engine and sample server, not a web page or REST API. No app-specific HTTP route or frontend page exists. Library consumers can optionally set an exact WebSocket upgrade pathname; the standalone app leaves path matching unrestricted.
 
@@ -30,20 +30,29 @@ This is a WebSocket transport engine and sample server, not a web page or REST A
 | `handlers/command.handler.js`  | Sample ping/echo/admin broadcast/client shutdown commands.                                                                                  |
 | `handlers/status.handler.js`   | Sample status acknowledgement, admin snapshot and broadcast.                                                                                |
 | `load-test/server.js`          | Test-only loopback server composing the engine and sample handlers for scale measurements.                                                  |
+| `load-test/pu06-preflight.js`  | Pure offline JSON readiness validator for owner-approved VPS/WSS/load/SLO inputs; never starts a load test or accesses the network. |
 | `test/engine.test.js`          | Integration coverage for handshake, auth, groups, limits and cleanup.                                                                       |
 | `test/phase1.test.js`          | Phase 1 config, subscription-authorization, and broadcast regression tests.                                                                 |
 | `test/phase2.test.js`          | Timeout cancellation/accounting, drain, aggregate cap, send failure, metrics, and redaction tests.                                          |
 | `test/phase3.test.js`          | Proves two application configurations compose through public engine APIs without core specialization.                                       |
 | `test/phase5.test.js`          | Covers duplicate client IDs, invalid upgrade paths, and shared-server route isolation.                                                      |
 | `test/phase7.test.js`          | Covers handler-signal cancellation and bounded global in-flight work.                                                                       |
+| `test/pu04-security.test.js`    | PU-04 local security acceptance: handshake, roles, tenant isolation, generic protocol errors, redaction and rate/concurrency close codes. |
+| `test/pu05-wss-proxy.test.js`  | PU-05 temporary TLS/WSS reverse-proxy loopback smoke: upgrade, cert trust, health/readiness, metrics, drain and restart; NOT a production proxy. |
 | `test/load/clients.py`         | Async Python workload, response/fanout/reconnect checks, latency and resource report.                                                       |
+| `test/load/pu06-target-template.json` | PU-06 data-only unapproved 4 GiB WSS deployment/workload/SLO readiness fields; deliberately no credentials or numerical SLO defaults. |
+| `test/load/pu06-preflight.test.js` | PU-06 six offline Node tests for readiness blocking, unsafe URL/secret validation, workload/SLO sanity and CLI fail-closed behavior. |
 | `test/requirements-load.txt`   | Pinned test-only Python WebSocket client dependency.                                                                                        |
-| `package.json`                 | Package metadata, exports, scripts, Node floor, dependency.                                                                                 |
+| `package.json`                 | Package metadata, exports, Node floor, dependency and npmjs release whitelist/links.                                                        |
+| `scripts/verify-npm-package.js` | Read-only exact npm pack dry-run manifest check; excludes development/CI/private files; never publishes. |
+| `package-lock.json`            | Committed npm lockfile v3; resolves `ws@8.22.0` for reproducible installs.                                                                  |
+| `.gitignore`                   | Keeps private `notes/` and generated `node_modules/` out of new Git tracking.                                                              |
+| `.github/workflows/ci.yml`     | Read-only GitHub Actions CI: locked npm install, Node compatibility tests, dependency audit and required result gate (live run unverified). |
 
 ## Implemented Behavior
 
 - Phase 1 centralized finite defaults and validation, enforced subscription authorization through both context and manager APIs, and fixed broadcast delivery count.
-- Phase 2 added bounded origin/auth callbacks, pending-slot release on timeout, graceful async drain, optional global limits, injectable metrics, safe logging, and send-failure cleanup.
+- Phase 2 introduced bounded origin/auth callback waits, the earlier timeout admission accounting, graceful async drain, optional global limits, injectable metrics, safe logging, and send-failure cleanup. **The earlier timeout-slot release policy was subsequently superseded by Phase 6**: timed-out provider work retains its pending-upgrade slot until it settles.
 - Phase 3 verified that independent applications can configure auth headers, origins, identities, handlers and metrics through the same public `createEngine`/`register` APIs. Sample handlers remain outside transport core; `app.js` composes them.
 - Phase 4 adds a repeatable Python-client loopback profile and a close-event metric. The final 1k and 2k local profiles passed their provisional thresholds, including the 2k reconnect waves; the helper server is outside Node's automatic test discovery.
 - `npm test` passed 12 tests, 0 failures after Phase 4.
@@ -51,6 +60,9 @@ This is a WebSocket transport engine and sample server, not a web page or REST A
 - Remediation Phase 6 passes cooperative `AbortSignal`s to origin/auth callbacks, aborts them on timeout or engine stop, and retains the `maxPendingUpgrades` work slot until a timed-out provider settles. Existing 503 behavior is preserved; callback lifecycle tests and final suite results are recorded in the phase log.
 - Remediation Phase 7 exposes a per-connection `ctx.signal`, aborts it on disconnect/error/engine stop, and bounds concurrent handler work across the engine with `limits.maxGlobalConcurrentMessages` (default 1024). Saturation closes only the submitting client with 1013; work remains counted until its promise settles. Focused tests pass 3/3; the full suite passes 20/20.
 - Phase 8 enabled default-on aggregate guardrails of 500 inbound messages/second and 64 MiB pending sends, with per-engine overrides. A provisional 100-client/1KiB local loopback profile passed its delivery/latency targets; its 127.87% peak one-core CPU sample and non-target host mean it does not qualify the 4GB VPS.
+- Production-update PU-04 adds **six local Node WebSocket security regression tests** for 401/403/500 handshake handling, missing Origin, protected group authorization, admin permissions, protocol error/redaction, and 1008/1013 close codes. Also corrected stale timeout slot-release wording in `docs/WEBSOCKET_PROTOCOL.md`. Engine, sample auth adapter, handlers, defaults and wire behavior are unchanged. Native-browser credentials and token rotation remain consuming-application responsibilities.
+- Production-update PU-05 adds **two local HTTPS/WSS reverse-proxy integration tests** with ephemeral OpenSSL test-only certs on loopback: trusted/untrusted TLS, proxy path/Origin/auth decisions, sanitized forwarded headers, ping/pong, in-memory metric callbacks, test-owned readiness/liveness, graceful drain and WSS reconnect. It does **not** bundle production proxy/health/exporter/supervisor behavior, and real domain/host/WSS acceptance remains blocked by deployment decisions D-02/D-05/D-10. No engine/app/UI/auth/protocol changes.
+- Production-update PU-06 adds an **offline-only** `load-test/pu06-preflight.js` and unapproved `test/load/pu06-target-template.json`, plus six negative/unit checks; it checks owner-approved topology, actual 4 GiB WSS host, workload and numerical SLO inputs but **never opens a socket or runs traffic**. No target host, workload, SLO or credentials were authorized; F-11/Phase 8 real 4 GiB capacity acceptance remains BLOCKED. Existing Python harness cannot test public WSS and was not run without Python.
 
 ## Phase 4 Local Scale Study
 
@@ -58,10 +70,18 @@ On Windows Server 2022 with Node `v26.12.0`, Python `3.12.0`, 4 logical CPUs, an
 
 These are synthetic loopback results against provisional thresholds, not a production-supported concurrency guarantee. Application-specific traffic, deployment hardware, TLS/proxy path, production SLOs, and resource budgets are unknown.
 
+## GH-01 — GitHub CI Publication and npmjs Packaging Preparation (2026-11-17)
+
+User separately approved Git commit/push and execution of **read-only CI**, plus preparation (not publication) of the npmjs package. Current `package.json` retains `configurable-websocket-engine@1.0.0` with MIT, adds repository/bugs/homepage/keywords and strict `files` whitelist: engine runtime source, README, LICENSE and three API/protocol/configuration docs only. `scripts/verify-npm-package.js` checks dry-run contents and package/lock license/version parity. GitHub Actions additionally includes safely isolated **local runner** 100-client Python WebSocket profile, tarball install/import smoke and fail-closed required CI gate, alongside Node 20/22/24/26, security and WSS fixture tests. None of this is a 4 GiB production VPS qualification or permission to `npm publish`. Actual GitHub run and npm ownership/credentials are separate checks.
+
+## PU-07 Final Release Gate (2026-11-17)
+
+The documentation-only [production release audit](RELEASE_READINESS_AUDIT.md) reconciles F-01–F-13 and records an explicit **NO-GO**: corrected local docs/MIT/lockfile/security tests are not enough for release. GitHub Actions matrix has not run because the workflow is unpushed; there is no approved real WSS proxy/domain/operator readiness, no 4 GiB VPS workload/p95/p99/CPU/RSS SLO measurement and no tested rollback/operator sign-off. PU-07 is an **evidence-only NO-GO audit**; no engine, UI, authentication, protocol, package, CI, server or deployment change was made.
+
 ## Extension Boundaries and Remaining Work
 
 The public root package export is `createEngine`; config/observability modules are internal. Supported extension callbacks include authentication, subscription authorization, logger and metrics. No external consumer requirements were supplied, so Phase 3 adds no store/pubsub/codec adapter or backend.
 
-Per-IP/tenant limits remain deferred until a trusted proxy and tenant-identity contract are specified. The repository has no metrics backend, persistent store, or production-qualified concurrency number. Active aggregate defaults are guardrails, not capacity evidence. The local load harness does not test TLS, reverse proxies, remote hosts, or a consuming application's actual traffic profile. No license persistence/suspension/logout workflow or UI is implemented by this transport engine.
+Per-IP/tenant **rate limits** remain deferred until a trusted proxy and tenant-identity contract are specified. The PU-04 tenant/group-isolation tests use a test-only, application-supplied subscription authorizer and do not add native tenant accounts, credential issuance, rotation, persistence or IP-policy features. The repository has no metrics backend, persistent store, or production-qualified concurrency number. Active aggregate defaults are guardrails, not capacity evidence. The Python load harness does not test TLS, reverse proxies, remote hosts, or a consuming application's actual traffic profile; separate PU-05 **loopback WSS proxy smoke tests** are only protocol/ops integration checks, not production host load qualification. PU-06 preflight validates **configuration completeness only**, not production performance. No license persistence/suspension/logout workflow or UI is implemented by this transport engine.
 
-User setup, protocol, API, load-testing, and deployment guides are indexed in [../docs/README.md](../docs/README.md). Private phase scope and readiness decisions are in `../notes/PRODUCTION_READINESS_ROADMAP.md`.
+User setup, protocol, API, load-testing, and deployment guides are indexed in [../docs/README.md](../docs/README.md). Internal phase plans and readiness decisions are kept in the locally ignored `notes/` directory; those private files are **not** part of the public repository.

@@ -10,6 +10,7 @@ This tracked directory records the verified design and development history of So
 - Update [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) in the same task as each code change. Record the date, files or behaviors changed, phase steps, and verification result.
 - Update `PROJECT_OVERVIEW.md` when implementation facts, feature behavior, or ownership change.
 - Keep [MINIFEST.md](MINIFEST.md) synchronized with the direct contents of this directory.
+- Read [RELEASE_READINESS_AUDIT.md](RELEASE_READINESS_AUDIT.md) for the PU-07 evidence-based **NO-GO** production release decision and required next acceptance gates. This is an audit, not a release.
 - Write the private plan in `notes/` before starting implementation, as required by the root `AGENTS.md`.
 
 ## Current Scope

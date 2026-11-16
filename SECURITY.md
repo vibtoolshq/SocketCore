@@ -23,7 +23,7 @@ No response or remediation SLA is currently published. The project owner can ack
 - Origin validation is not authentication. Require an authentication callback and application-level authorization for protected actions.
 - The engine default denies group subscriptions. Configure and test a subscription authorizer if groups are used.
 - The standalone app does not set a URL path policy, inspect trusted proxy headers, provide TLS, or include a health endpoint.
-- Optional global message-rate and aggregate buffered-byte limits are disabled by default; choose finite deployment values based on tested workload.
+- Global inbound message-rate and aggregate buffered-byte limits are **enabled by default** at 500 messages/second and 64 MiB (see `engine/config.js`). These are configurable guardrails, **not** evidence of validated production capacity; size per-deployment ceilings only after representative tests.
 - Do not expose secrets through logs, URLs, metrics attributes, or public support reports.
 
 See [Production Deployment Boundaries](docs/PRODUCTION_DEPLOYMENT.md) for the operator checklist. These notes describe current implementation boundaries and are not a security certification.

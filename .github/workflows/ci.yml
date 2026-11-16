@@ -1,0 +1,173 @@
+name: SocketCore CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# This workflow NEVER publishes an npm package, creates a release, or touches a VPS.
+permissions:
+  contents: read
+
+concurrency:
+  group: socketcore-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Node ${{ matrix.node }} / Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Node 20 is EOL; CI tests it only because package.json still supports >=20.
+        node: [20, 22, 24, 26]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Locked install
+        run: npm ci --no-audit --no-fund
+      - name: Syntax check
+        run: |
+          node --check app.js
+          node --check engine/index.js
+          node --check engine/config.js
+          node --check engine/connection-manager.js
+          node --check engine/message-router.js
+          node --check engine/observability.js
+          node --check handlers/command.handler.js
+          node --check handlers/status.handler.js
+          node --check load-test/server.js
+          node --check load-test/pu06-preflight.js
+          node --check scripts/verify-npm-package.js
+      - name: Run all Node regression, security, WSS and offline-preflight tests
+        run: npm test
+
+  local-load:
+    name: Safe Python loopback load
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.12'
+      - name: Locked Node install
+        run: npm ci --no-audit --no-fund
+      - name: Install isolated Python load-test dependency
+        run: python -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/socketcore-python" -r test/requirements-load.txt
+      - name: Local-only 100-client profile with reconnect waves
+        env:
+          PYTHONPATH: ${{ runner.temp }}/socketcore-python
+        run: |
+          python test/load/clients.py \
+            --clients 100 --ramp-rate 50 --soak-seconds 15 \
+            --request-interval 3 --broadcast-interval 3 \
+            --payload-bytes 1024 --reconnect-burst-clients 25 \
+            --response-timeout 10 --connect-timeout 30
+
+  package-readiness:
+    name: npm package readiness / no publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node 26
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          package-manager-cache: false
+      - name: Locked install
+        run: npm ci --no-audit --no-fund
+      - name: Verify npm package metadata and exact safe file whitelist
+        run: npm run verify:package
+      - name: Create unpublishable local tarball and import via clean consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
+          mkdir "$RUNNER_TEMP/socketcore-consumer"
+          cd "$RUNNER_TEMP/socketcore-consumer"
+          npm init --yes >/dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP/configurable-websocket-engine-1.0.0.tgz"
+          node -e "const p=require('configurable-websocket-engine');if(typeof p.createEngine!=='function')process.exit(1);console.log('PACKAGED_CONSUMER_IMPORT_PASS')"
+      - name: Upload npm tarball as CI artifact (NOT published to npmjs)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: socketcore-npm-tarball-1.0.0
+          path: ${{ runner.temp }}/configurable-websocket-engine-1.0.0.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  dependency-audit:
+    name: Dependency security / high+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node 26
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          package-manager-cache: false
+      - name: Locked install
+        run: npm ci --no-audit --no-fund
+      - name: Fail on high and critical production dependency advisories
+        run: npm audit --omit=dev --audit-level=high
+
+  ci-gate:
+    name: Required CI gate
+    if: ${{ always() }}
+    needs: [tests, local-load, package-readiness, dependency-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Record actual required job outcomes and fail closed
+        env:
+          TEST_RESULT: ${{ needs.tests.result }}
+          LOAD_RESULT: ${{ needs.local-load.result }}
+          PACK_RESULT: ${{ needs.package-readiness.result }}
+          AUDIT_RESULT: ${{ needs.dependency-audit.result }}
+        shell: bash
+        run: |
+          {
+            echo "## SocketCore required CI gates"
+            echo ""
+            echo "| Check | Status |"
+            echo "| --- | --- |"
+            echo "| Node 20/22/24/26 matrix | ${TEST_RESULT} |"
+            echo "| 100-client GitHub runner local loopback | ${LOAD_RESULT} |"
+            echo "| npmjs package whitelist and consumer import | ${PACK_RESULT} |"
+            echo "| Production dependency audit high+ | ${AUDIT_RESULT} |"
+            echo ""
+            echo "**GitHub runner load != verified production 4 GiB VPS WSS capacity.**"
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "$TEST_RESULT" = "success"
+          test "$LOAD_RESULT" = "success"
+          test "$PACK_RESULT" = "success"
+          test "$AUDIT_RESULT" = "success"

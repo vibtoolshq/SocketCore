@@ -11,11 +11,13 @@ This guide covers the SocketCore standalone sample server and how to connect to 
 
 ## Install and Start
 
-From the repository root:
+From a fresh repository checkout, install dependencies from the committed `package-lock.json`:
 
 ```sh
-npm install
+npm ci
 ```
+
+`npm ci` uses the locked versions and replaces local `node_modules/` in the directory where it runs; do not run it against an installation containing data you need to preserve. The repository ignores `node_modules/` and keeps `package-lock.json` tracked. For intentional dependency changes use `npm install` in a dedicated update phase, review the resulting lockfile, and verify again.
 
 Set an authentication token in the environment, then start the server. The app reads `process.env` directly and does not read `.env` files:
 
