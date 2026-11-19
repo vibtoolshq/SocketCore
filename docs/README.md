@@ -1,5 +1,7 @@
 # SocketCore Documentation
 
+**Current developer documentation starts at [index.md](index.md).** Use [MANIFEST.md](MANIFEST.md) for the complete navigable docs inventory and [COVERAGE_AUDIT.md](COVERAGE_AUDIT.md) for source-to-doc QA. This legacy index remains for compatibility with earlier repository links. The expanded `docs/` hierarchy is GitHub-only and is **not included** in the already-published npm 1.0.0 tarball.
+
 **A reusable WebSocket core for real-time Node.js applications.**
 
 SocketCore is a configurable Node.js WebSocket engine for authenticated real-time messaging, connection limits, backpressure, metrics hooks, and graceful shutdown. This tracked directory contains verified setup, protocol, API, deployment, and load-study references. Documentation describes implemented behavior and labels deployment capabilities that remain the host application's responsibility.

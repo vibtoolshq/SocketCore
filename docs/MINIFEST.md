@@ -1,4 +1,6 @@
-# SocketCore Documentation Directory MINIFEST
+# SocketCore Documentation Directory MINIFEST (Legacy)
+
+**Current authoritative documentation inventory:** [MANIFEST.md](MANIFEST.md). This older, misspelled file is preserved for existing links. The repository now has subdirectories `getting-started/`, `guides/`, `api/`, `architecture/`, `reference/`, `development/`, and `help/`. Refer to the current manifest instead of this historical flat inventory.
 
 Inventory of direct children in `docs/`. Update this file when a child is added, removed, or renamed.
 
@@ -15,4 +17,4 @@ Inventory of direct children in `docs/`. Update this file when a child is added,
 | `CI_TESTING.md`               | GH-01 CI extension; GitHub run must be verified | Node test matrix, Python loopback load, npm tarball consumer smoke, security and fail-closed CI gate. |
 | `NPM_RELEASE_PREP.md`         | GH-01 preparation, NOT published | npm package name, file whitelist, tarball check, login/ownership blockers and separate publish authorization. |
 
-There are no subdirectories in `docs/` in this snapshot.
+**Historical statement superseded:** the current `docs/` directory includes the seven developer-documentation subdirectories listed above, plus the new `index.md`, `MANIFEST.md`, and `COVERAGE_AUDIT.md`. The table above is an earlier snapshot, **not** a current exhaustive inventory.
