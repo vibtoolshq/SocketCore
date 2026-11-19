@@ -1,3 +1,10 @@
+---
+title: "Getting Started"
+description: "Install the npm library and create your first authenticated WebSocket connection."
+order: 0
+draft: false
+---
+
 # Getting Started
 
 SocketCore is a Node.js CommonJS library, not a hosted WebSocket service.

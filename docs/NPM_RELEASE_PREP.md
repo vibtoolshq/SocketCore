@@ -1,3 +1,10 @@
+---
+title: "npmjs Release Preparation"
+description: "Public package metadata, provenance, publishing controls and verification."
+order: 22
+draft: false
+---
+
 # SocketCore — npmjs Release Preparation and Publication Controls
 
 **Package:** `configurable-websocket-engine@1.0.0` (existing package name/version retained, not silently renamed to an unverified npm scope). **License:** MIT. **Repository:** [vibtoolshq/SocketCore](https://github.com/vibtoolshq/SocketCore). **GH-01 baseline:** no publication was authorized. **NPM-01 FINAL (2026-11-17):** the owner authorized **one-time GitHub Actions publication of version 1.0.0** using the existing organization-scoped `NPM_TOKEN`. The publishing job **succeeded**, npm served public 1.0.0 metadata, signed provenance was verified, and after npm's publish-time security scan a completely fresh consumer installed and imported `createEngine` successfully from the official registry. **This is a published npm library, not a production VPS deployment.**
@@ -11,7 +18,7 @@
 
 ## NPM-01 one-time tagged publishing workflow (authorized 2026-11-17)
 
-The new [`.github/workflows/publish-npm.yml`](../.github/workflows/publish-npm.yml) **only** triggers on a pushed release tag named `npm-v1.0.0`, never on an ordinary `main` push, pull request or other version tag. It requires the tag SHA to exactly match current `main`, a **successful complete `SocketCore CI` GitHub Actions push run for that exact SHA**, a fresh `npm ci`, full `npm test`, package whitelist verification, high+ dependency security audit and evidence the version is not already registered. The publishing job runs on GitHub-hosted Ubuntu/Node 26 and uses the organization's `NPM_TOKEN` **only in the final publish step**: `npm publish --access public --provenance --ignore-scripts`. Its job permissions are read-only contents plus the narrowly required OIDC `id-token: write` for provenance; no runtime engines/protocols or VPS deployment are changed.
+The new [`.github/workflows/publish-npm.yml`](https://github.com/vibtoolshq/SocketCore/blob/main/.github/workflows/publish-npm.yml) **only** triggers on a pushed release tag named `npm-v1.0.0`, never on an ordinary `main` push, pull request or other version tag. It requires the tag SHA to exactly match current `main`, a **successful complete `SocketCore CI` GitHub Actions push run for that exact SHA**, a fresh `npm ci`, full `npm test`, package whitelist verification, high+ dependency security audit and evidence the version is not already registered. The publishing job runs on GitHub-hosted Ubuntu/Node 26 and uses the organization's `NPM_TOKEN` **only in the final publish step**: `npm publish --access public --provenance --ignore-scripts`. Its job permissions are read-only contents plus the narrowly required OIDC `id-token: write` for provenance; no runtime engines/protocols or VPS deployment are changed.
 
 This is **one-time authorized direct token publishing** and is deliberately not suitable as an automatically repeating release pipeline. Access to the `NPM_TOKEN` organization secret must include the public GitHub repository. A publish attempt can still fail because of npm namespace ownership, token scope, token revocation, 2FA policy, or registry availability; such failures must be reported and cannot be called success. npmjs official guidance says direct Bypass-2FA-token publishing is being removed in January 2027; future releases should move to **Trusted Publishing (OIDC)** with reviewed package ownership, ideally scoped permissions, and token rotation. The separate user-uploaded **PyPI** token is unrelated and must never be used to publish npm.
 
@@ -43,7 +50,7 @@ These local commands **do not publish** anything. The **separate** NPM-01 GitHub
 4. Obtain approved release-candidate commit, release notes and changelog; verify the exact tarball contents and make an install/import check in a clean environment. Publication is not reversible simply by deleting a Git tag; use a correct versioning/deprecation/recovery plan.
 5. Obtain separate explicit permission to create a tag/GitHub Release or `npm publish` (these are distinct actions). If real public WSS/VPS production deployment is part of the distribution acceptance policy, its 4 GiB workload/SLO, operator monitoring and rollback drill must also be approved and measured.
 
-**Do not assume the GitHub Actions loopback load is the target 4 GiB VPS qualification.** The formal [production release gate](../project/RELEASE_READINESS_AUDIT.md) remains **NO-GO** until the missing external evidence has actually been collected.
+**Do not assume the GitHub Actions loopback load is the target 4 GiB VPS qualification.** The formal [production release gate](https://github.com/vibtoolshq/SocketCore/blob/main/project/RELEASE_READINESS_AUDIT.md) remains **NO-GO** until the missing external evidence has actually been collected.
 
 ## NPM-01 actual GitHub Actions npm publish result (2026-11-17)
 

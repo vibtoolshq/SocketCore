@@ -1,3 +1,10 @@
+---
+title: "Execution Flow"
+description: "WebSocket upgrade, authentication, dispatch, send and shutdown lifecycles."
+order: 2
+draft: false
+---
+
 # Upgrade, Dispatch, Send and Shutdown Flow
 
 ```mermaid

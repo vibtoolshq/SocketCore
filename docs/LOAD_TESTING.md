@@ -1,3 +1,10 @@
+---
+title: "Load Testing"
+description: "Synthetic WebSocket workload tests, limitations and performance acceptance."
+order: 21
+draft: false
+---
+
 # SocketCore Local WebSocket Load Study
 
 **A reusable WebSocket core for real-time Node.js applications.** This guide documents the SocketCore Phase 4 test-only harness: Python clients in `test/load/` and the temporary Node server in `load-test/server.js`. The server uses the same `createEngine` factory and built-in status/command handlers. It does not launch `app.js`; app packaging, TLS, proxies, and remote hosts are outside this local profile.
@@ -65,7 +72,7 @@ Change CLI options for smaller staged trials. Do not claim production readiness 
 
 **Status: BLOCKED for actual 4 GiB VPS production qualification.** The project does not have an owner-selected deployment model, approved real target VPS/WSS endpoint, actual client traffic mix, numeric production SLO, or monitoring/restart owner. The previous 100/1,000/2,000-client Windows loopback runs are historical synthetic studies; they are **not** measurements on a 4 GiB VPS or evidence of an approved production concurrency limit.
 
-Before requesting permission for any target load, review the data-only [PU-06 target template](../test/load/pu06-target-template.json) and the **offline-only** [preflight](../load-test/pu06-preflight.js). The template intentionally starts with `null` deployment, traffic and SLO fields and `"reviewState": "DRAFT_UNAPPROVED"`. The script only reads local JSON and validates its fields; **it never starts a server, connects to WSS, contacts a VPS, measures latency or authorizes traffic**. It rejects missing configuration, insecure/non-WSS or local/private test target URLs, URL credentials/query strings, embedded secret field names, invalid resource/traffic/SLO values and absent owner approval.
+Before requesting permission for any target load, review the data-only [PU-06 target template](https://github.com/vibtoolshq/SocketCore/blob/main/test/load/pu06-target-template.json) and the **offline-only** [preflight](https://github.com/vibtoolshq/SocketCore/blob/main/load-test/pu06-preflight.js). The template intentionally starts with `null` deployment, traffic and SLO fields and `"reviewState": "DRAFT_UNAPPROVED"`. The script only reads local JSON and validates its fields; **it never starts a server, connects to WSS, contacts a VPS, measures latency or authorizes traffic**. It rejects missing configuration, insecure/non-WSS or local/private test target URLs, URL credentials/query strings, embedded secret field names, invalid resource/traffic/SLO values and absent owner approval.
 
 From the repository root (Node.js only; no Python dependency needed for this preflight):
 

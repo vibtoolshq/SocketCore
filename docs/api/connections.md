@@ -1,3 +1,10 @@
+---
+title: "Connection Manager and Groups"
+description: "Connection records, sends, broadcasts, subscriptions and drain contracts."
+order: 2
+draft: false
+---
+
 # Connection Manager, Sends and Groups
 
 Access via **`engine.connectionManager`** (public returned interface, not a package subpath export). Factory implementation: `engine/connection-manager.js` internally; users should create the manager through `createEngine`.

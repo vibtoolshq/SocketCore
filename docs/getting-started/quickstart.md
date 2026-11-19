@@ -1,3 +1,10 @@
+---
+title: "Authenticated WebSocket Quickstart"
+description: "Run a minimal Node WebSocket server and exchange echo messages."
+order: 2
+draft: false
+---
+
 # Quickstart: Authenticated WebSocket Echo
 
 This is a minimal **Node.js-only** example. It uses the public root `createEngine` factory and the application's own HTTP server. It is not a public Internet deployment, and it does not expose a real credential system.

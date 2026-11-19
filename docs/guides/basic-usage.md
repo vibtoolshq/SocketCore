@@ -1,3 +1,10 @@
+---
+title: "Basic Usage"
+description: "Register handlers and send JSON responses with the SocketCore engine."
+order: 1
+draft: false
+---
+
 # Basic Usage: Handlers and Replies
 
 Starting from the [quickstart's](../getting-started/quickstart.md) initialized `engine`, register a handler by exact JSON `type`:

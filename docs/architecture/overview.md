@@ -1,3 +1,10 @@
+---
+title: "Architecture Overview"
+description: "Engine architecture, module responsibilities and internal boundaries."
+order: 1
+draft: false
+---
+
 # Architecture and Module Boundaries
 
 ```mermaid

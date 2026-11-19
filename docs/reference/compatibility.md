@@ -1,3 +1,10 @@
+---
+title: "Compatibility and Dependencies"
+description: "Node.js versions, dependency constraints, exports and distribution behavior."
+order: 2
+draft: false
+---
+
 # Dependencies, Compatibility and Distribution
 
 | Requirement | Actual source |

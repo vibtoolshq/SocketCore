@@ -1,3 +1,10 @@
+---
+title: "Message Router and Error Contracts"
+description: "JSON dispatch, handler context, protocol errors and close behavior."
+order: 3
+draft: false
+---
+
 # Message Router, Handler Context and Error Contracts
 
 The engine exposes `engine.messageRouter`, not a separately exported module. Calling `engine.register(type, handler)` delegates to `engine.messageRouter.register`.

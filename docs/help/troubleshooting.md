@@ -1,3 +1,10 @@
+---
+title: "Troubleshooting and FAQ"
+description: "Common authentication, integration, exports and runtime failures."
+order: 1
+draft: false
+---
+
 # Troubleshooting and FAQ
 
 **Q: `require("configurable-websocket-engine/package.json")` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.**
@@ -36,4 +43,4 @@ A: No. The CI runner's load tests are local synthetic workload, not a target-VPS
 
 A: A handler threw or rejected; the transport emits a generic client error and calls the safe host logger. Reproduce with sanitized inputs and inspect application-level logic.
 
-For detailed reference, see [API errors](../api/messages.md), [debugging](../development/debugging.md), [configuration](../reference/configuration.md) and [support](../../SUPPORT.md).
+For detailed reference, see [API errors](../api/messages.md), [debugging](../development/debugging.md), [configuration](../reference/configuration.md) and [support](https://github.com/vibtoolshq/SocketCore/blob/main/SUPPORT.md).

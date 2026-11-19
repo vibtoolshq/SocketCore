@@ -1,3 +1,10 @@
+---
+title: "Application Integration"
+description: "Embed SocketCore in HTTP(S), implement auth and operate behind a reverse proxy."
+order: 3
+draft: false
+---
+
 # Embedding SocketCore in an Existing Server
 
 **Ownership:** your host owns Node HTTP(S), route composition, TLS, credentials, monitoring, and process signals. The library attaches only an `upgrade` listener and internally uses `ws` with `noServer:true`.

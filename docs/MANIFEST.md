@@ -24,16 +24,19 @@
 
 ## Architecture
 
+- [Architecture index](architecture/index.md)
 - [Module boundaries](architecture/overview.md)
 - [Execution/data flow](architecture/execution-flow.md)
 
 ## Reference
 
+- [Reference index](reference/index.md)
 - [Library configuration defaults](reference/configuration.md)
 - [Runtime, dependencies and compatibility](reference/compatibility.md)
 
 ## Development
 
+- [Development index](development/index.md)
 - [Testing and CI](development/testing.md)
 - [Debugging and metrics](development/debugging.md)
 - [Contributing](development/contributing.md)
@@ -41,6 +44,7 @@
 
 ## Help
 
+- [Help index](help/index.md)
 - [Troubleshooting and FAQ](help/troubleshooting.md)
 
 ## Original tracked technical references
@@ -53,8 +57,6 @@
 - [Load testing](LOAD_TESTING.md)
 - [GitHub CI](CI_TESTING.md)
 - [npm publication](NPM_RELEASE_PREP.md)
-- [Legacy direct-child manifest](MINIFEST.md)
-- [Legacy README index](README.md)
 
 ## Quality and coverage
 
@@ -62,3 +64,7 @@
 - [Documentation homepage](index.md)
 
 **Status:** Documentation-only update; no runtime or package changes. For the live npm package, prefer API docs shipped at version `1.0.0`; these additional pages reflect the audited GitHub repository snapshot.
+
+## Vib Docs Engine synchronization
+
+This developer-only documentation tree is configured in `.vibtools/docs.config.json` with `docsType: developer` and `docsPath: docs`. This governance manifest is automatically omitted from the public portal; it remains in GitHub for repository navigation.

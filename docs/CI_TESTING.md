@@ -1,10 +1,17 @@
+---
+title: "GitHub Actions and CI"
+description: "Node version matrix, package verification, security and release evidence."
+order: 20
+draft: false
+---
+
 # SocketCore — GitHub Actions CI and Evidence
 
-**Implementation:** PU-03 workflow, expanded in GH-01 (2026-11-17). Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). This CI is **read-only**: no deployment, token permissions beyond `contents: read`, npm publish, GitHub Release or tag creation. A green runner is not a real 4 GiB production VPS acceptance.
+**Implementation:** PU-03 workflow, expanded in GH-01 (2026-11-17). Workflow: [`.github/workflows/ci.yml`](https://github.com/vibtoolshq/SocketCore/blob/main/.github/workflows/ci.yml). This CI is **read-only**: no deployment, token permissions beyond `contents: read`, npm publish, GitHub Release or tag creation. A green runner is not a real 4 GiB production VPS acceptance.
 
 ## NPM-01 publishing workflow (separate authorization)
 
-The owner subsequently authorized a **one-time public npmjs publication**, using the existing GitHub organization secret `NPM_TOKEN`. The independent [publish workflow](../.github/workflows/publish-npm.yml) triggers **only** when the exact tag `npm-v1.0.0` is pushed. It does not publish on a normal `main` push or PR. It first verifies a green complete `SocketCore CI` run on the tagged commit, re-runs Node regression tests, package whitelist and high+ dependency audit, and only then uses `NODE_AUTH_TOKEN` in a tightly scoped publish step with npm provenance. GitHub Actions `id-token:write` is restricted to the publisher job. **This is not an automatic production deployment or a substitute for real WSS/4 GiB VPS acceptance.** See [npmjs release preparation](NPM_RELEASE_PREP.md) for ownership, authentication and forward-looking OIDC migration.
+The owner subsequently authorized a **one-time public npmjs publication**, using the existing GitHub organization secret `NPM_TOKEN`. The independent [publish workflow](https://github.com/vibtoolshq/SocketCore/blob/main/.github/workflows/publish-npm.yml) triggers **only** when the exact tag `npm-v1.0.0` is pushed. It does not publish on a normal `main` push or PR. It first verifies a green complete `SocketCore CI` run on the tagged commit, re-runs Node regression tests, package whitelist and high+ dependency audit, and only then uses `NODE_AUTH_TOKEN` in a tightly scoped publish step with npm provenance. GitHub Actions `id-token:write` is restricted to the publisher job. **This is not an automatic production deployment or a substitute for real WSS/4 GiB VPS acceptance.** See [npmjs release preparation](NPM_RELEASE_PREP.md) for ownership, authentication and forward-looking OIDC migration.
 
 ## Actual GH-01 / NPM-01 run evidence — 2026-11-17
 
@@ -52,6 +59,6 @@ npm audit --omit=dev --audit-level=high
 
 The npm verification script runs `npm pack --dry-run --json --ignore-scripts` and checks an exact list of **11** intended distribution files. It never publishes. Node's current local tests and the Python runner profile are different kinds of evidence; a 34/34 local Node result does not automatically establish GitHub-runner success.
 
-**Release boundary:** Browser credential lifecycle, real public TLS/proxy, 4 GiB VPS target latency/CPU/RSS/SLO, monitoring, rollback, and npm registry account/ownership still need separate acceptance. Formal [production gate audit](../project/RELEASE_READINESS_AUDIT.md) remains **NO-GO** until all production and release gates are met.
+**Release boundary:** Browser credential lifecycle, real public TLS/proxy, 4 GiB VPS target latency/CPU/RSS/SLO, monitoring, rollback, and npm registry account/ownership still need separate acceptance. Formal [production gate audit](https://github.com/vibtoolshq/SocketCore/blob/main/project/RELEASE_READINESS_AUDIT.md) remains **NO-GO** until all production and release gates are met.
 
 **GH-01 publication status:** Local workflow and package preparation verified before Git push; actual job results must be recorded from GitHub after pushing. No publish credentials are injected by this CI.

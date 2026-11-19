@@ -1,3 +1,10 @@
+---
+title: "createEngine Factory and Lifecycle"
+description: "Exact public factory options, returned methods, upgrade behavior and lifecycle."
+order: 1
+draft: false
+---
+
 # `createEngine` Factory and Engine Lifecycle
 
 **Module:** root `configurable-websocket-engine`. **Signature:** `createEngine({ authenticate, authorizeSubscription = async () => false, allowedOrigins = [], path, limits = {}, heartbeat = {}, timeouts = {}, websocket = {}, logger = console, metrics = {} } = {})`. **Returns:** a plain object with six named properties.

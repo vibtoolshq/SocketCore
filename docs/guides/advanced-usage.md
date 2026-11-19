@@ -1,3 +1,10 @@
+---
+title: "Advanced Usage"
+description: "Authorized groups, backpressure, concurrency, metrics and graceful shutdown."
+order: 2
+draft: false
+---
+
 # Advanced Usage: Groups, Backpressure and Metrics
 
 ## Authorization is per subscription

@@ -1,3 +1,10 @@
+---
+title: "Developer Guides"
+description: "Integrating handlers, groups, authorization, metrics and host servers."
+order: 0
+draft: false
+---
+
 # Integration Guides
 
 For a working host application, begin with [basic usage](basic-usage.md), then [advanced usage](advanced-usage.md) and [integration](integration.md).

@@ -1,4 +1,11 @@
-# SocketCore User Guide
+---
+title: "Standalone Demo Server Guide"
+description: "How developers run and inspect the SocketCore example server."
+order: 24
+draft: false
+---
+
+# Standalone Demo Server Guide
 
 This guide covers the SocketCore standalone sample server and how to connect to it. SocketCore is a reusable WebSocket core for real-time Node.js applications. It does not implement a browser UI, REST API, or HTTP health endpoint. For embedding the engine in another server, see [ENGINE_API.md](ENGINE_API.md). Deployment prerequisites and responsibility boundaries are in [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md).
 

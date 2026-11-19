@@ -1,3 +1,10 @@
+---
+title: "Configuration Reference"
+description: "Exact SocketCore limits, heartbeat, timeouts and standalone environment mapping."
+order: 1
+draft: false
+---
+
 # Exact Library Configuration Defaults
 
 Values below come from `engine/config.js` and `engine/index.js` at the audited revision. For standalone environment mapping, see [CONFIGURATION.md](../CONFIGURATION.md).

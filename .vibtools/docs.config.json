@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.vib.tools/schemas/vibtools-docs.schema.json",
+  "schemaVersion": 1,
+  "docsType": "developer",
+  "slug": "socketcore",
+  "title": "SocketCore",
+  "category": "Core Infrastructure",
+  "description": "An embeddable authenticated WebSocket transport engine for Node.js applications.",
+  "version": "1.0.0",
+  "accentColor": "#0EA5E9",
+  "docsPath": "docs",
+  "branch": "main",
+  "ctaLabel": "View source",
+  "ctaUrl": "https://github.com/vibtoolshq/SocketCore"
+}

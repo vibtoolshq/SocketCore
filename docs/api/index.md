@@ -1,3 +1,10 @@
+---
+title: "Public API Reference"
+description: "Public SocketCore exports, returned engine interfaces, connection manager and message contracts."
+order: 0
+draft: false
+---
+
 # Public API Reference
 
 **The only supported npm package root export is `createEngine`.**

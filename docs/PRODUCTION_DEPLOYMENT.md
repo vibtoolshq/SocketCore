@@ -1,3 +1,10 @@
+---
+title: "Production Deployment Boundaries"
+description: "Production WSS/TLS, proxy operations and capacity qualification limits."
+order: 23
+draft: false
+---
+
 # SocketCore Production Deployment Boundaries
 
 **A reusable WebSocket core for real-time Node.js applications.** This guide is an operator checklist for embedding or deploying SocketCore. It does not certify the package for a particular workload. The repository has local loopback measurements, but no production workload, host, network path, or SLO has been specified.

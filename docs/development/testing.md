@@ -1,3 +1,10 @@
+---
+title: "Testing and CI"
+description: "Node regression tests, GitHub Actions, synthetic load and audit evidence."
+order: 1
+draft: false
+---
+
 # Tests and CI
 
 ## Node regression and security

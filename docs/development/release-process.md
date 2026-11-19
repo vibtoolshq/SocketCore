@@ -1,3 +1,10 @@
+---
+title: "Release Process"
+description: "Verified npmjs 1.0.0 workflow and guarded future release requirements."
+order: 4
+draft: false
+---
+
 # Release and Publishing (Observed 1.0.0)
 
 `configurable-websocket-engine@1.0.0` is already publicly published under the MIT License.
@@ -15,4 +22,4 @@
 
 The previous broadly scoped bypass-2FA token is a security/maintenance risk; restrict repository access and move future publishing to npm Trusted Publishing. Never print CI secrets.
 
-**Production vs package:** Publishing a Node library does not certify real WSS/proxy, metrics/exporter/rollback or 4 GiB VPS performance. See [production gates](../PRODUCTION_DEPLOYMENT.md) and [evidence audit](../../project/RELEASE_READINESS_AUDIT.md).
+**Production vs package:** Publishing a Node library does not certify real WSS/proxy, metrics/exporter/rollback or 4 GiB VPS performance. See [production gates](../PRODUCTION_DEPLOYMENT.md) and [evidence audit](https://github.com/vibtoolshq/SocketCore/blob/main/project/RELEASE_READINESS_AUDIT.md).

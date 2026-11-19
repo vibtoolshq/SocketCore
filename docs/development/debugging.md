@@ -1,3 +1,10 @@
+---
+title: "Debugging and Observability"
+description: "HTTP and WebSocket errors, metrics hooks and troubleshooting guidance."
+order: 2
+draft: false
+---
+
 # Debugging and Observability
 
 ## Upgrade failures
@@ -17,4 +24,4 @@ Malformed JSON gives `BAD_JSON`; missing string `type` gives `BAD_MESSAGE`; miss
 
 The `createEngine({logger, metrics})` hooks are application-provided. A compatible logger can implement `warn(message, safeDetails)` and `error(message, safeDetails)`; the built-in safe logger only forwards `name`/`code` from error objects, not stacks, headers or secrets. Metrics hooks `increment(name, value?, attrs?)`, `gauge(name, value, attrs?)`, `observe(name, value, attrs?)` are isolated from throwing callbacks. Names include `ws.connections.active`, `ws.connections.closed`, `ws.upgrades.accepted`, `ws.upgrades.rejected`, `ws.messages.in`, `ws.messages.out`, `ws.messages.dropped`, `ws.send.failures`, `ws.messages.handler_failures`, `ws.messages.dispatch_failures`, `ws.buffered_bytes.total`, `ws.event_loop_lag_ms`. No exporter/HTTP metrics route is included.
 
-For a reproducible failure, record Node version, package version, a sanitized configuration, log code/name, close status and the smallest non-secret message. Avoid attaching real tokens, API keys or private keys to issues. Use [SECURITY.md](../../SECURITY.md) for sensitive reports.
+For a reproducible failure, record Node version, package version, a sanitized configuration, log code/name, close status and the smallest non-secret message. Avoid attaching real tokens, API keys or private keys to issues. Use [SECURITY.md](https://github.com/vibtoolshq/SocketCore/blob/main/SECURITY.md) for sensitive reports.

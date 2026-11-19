@@ -1,3 +1,11 @@
+---
+title: "SocketCore"
+description: "Developer reference for the SocketCore WebSocket engine, API, configuration and integration."
+order: 0
+draft: false
+version: "1.0.0"
+---
+
 # SocketCore Developer Documentation
 
 **Package:** `configurable-websocket-engine@1.0.0` · **Runtime:** Node.js `>=20` · **Format:** CommonJS · **License:** MIT.
