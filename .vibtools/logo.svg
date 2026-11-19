@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SocketCore icon">
+  <defs>
+    <linearGradient id="orbit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#29E4F4"/>
+      <stop offset="0.48" stop-color="#0E9CF3"/>
+      <stop offset="1" stop-color="#2457E8"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0.05" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#31F0F1"/>
+      <stop offset="0.34" stop-color="#098EEA"/>
+      <stop offset="0.70" stop-color="#1858DF"/>
+      <stop offset="1" stop-color="#29D5F6"/>
+    </linearGradient>
+    <filter id="depth" x="-28%" y="-28%" width="156%" height="156%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#073B8B" flood-opacity=".25"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="url(#orbit)" stroke-width="18" stroke-linecap="round">
+    <path d="M378 89C323 55 256 49 190 71 111 96 66 157 60 242c-5 65 25 130 75 170"/>
+    <path d="M424 182c25 64 18 135-21 189-43 59-105 91-178 89"/>
+  </g>
+  <circle cx="379" cy="89" r="23" fill="#1374ED" stroke="#2BE5F3" stroke-width="7"/>
+  <circle cx="133" cy="413" r="23" fill="#086DEA" stroke="#25D6F4" stroke-width="7"/>
+  <path d="M397 155c17 8 30 21 39 40M389 184c10 5 19 14 24 25" fill="none" stroke="#1DDBF5" stroke-width="11" stroke-linecap="round"/>
+  <g filter="url(#depth)">
+    <path d="M355 151c-49-40-129-42-177-9-53 36-48 101 20 116 30 7 80 4 110 21 54 30 47 100-16 126-56 24-130 8-165-29" fill="none" stroke="#0B3B9F" stroke-width="91" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M355 151c-49-40-129-42-177-9-53 36-48 101 20 116 30 7 80 4 110 21 54 30 47 100-16 126-56 24-130 8-165-29" fill="none" stroke="url(#core)" stroke-width="81" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M327 146c-49-23-99-25-139 1" fill="none" stroke="#79F9FF" stroke-opacity=".7" stroke-width="7" stroke-linecap="round"/>
+    <path d="M175 378c37 22 84 22 117 5" fill="none" stroke="#43EBFE" stroke-opacity=".65" stroke-width="6" stroke-linecap="round"/>
+    <g fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linejoin="round" stroke-linecap="round">
+      <path d="m221 240-22 17 22 17"/>
+      <path d="m291 240 22 17-22 17"/>
+    </g>
+  </g>
+</svg>

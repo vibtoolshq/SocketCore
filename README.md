@@ -1,6 +1,10 @@
 # SocketCore
 
 <p align="center">
+  <img src=".vibtools/logo.svg" alt="SocketCore logo" width="124" height="124">
+</p>
+
+<p align="center">
   <strong>A reusable WebSocket core for real-time Node.js applications.</strong><br>
   Authenticated connections, message routing, backpressure, and graceful shutdown.
 </p>

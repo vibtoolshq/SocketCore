@@ -9,6 +9,7 @@
   "version": "1.0.0",
   "accentColor": "#0EA5E9",
   "docsPath": "docs",
+  "logoPath": ".vibtools/logo.svg",
   "branch": "main",
   "ctaLabel": "View source",
   "ctaUrl": "https://github.com/vibtoolshq/SocketCore"
